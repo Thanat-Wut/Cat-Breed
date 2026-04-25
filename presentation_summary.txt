@@ -8,7 +8,7 @@
    - Filtered out 851 empty rows, keeping usable data
    - Grouped cat breeds into 'Purebred' vs 'Mixed/Stray'
    - Standardized brand names into consistent groups
-   - Logic Check: Flagged respondents with no cat experience
+   - Dropped respondents with no cat experience (as they skipped the rest of the survey)
 
 3. Feature Encoding:
    - Likert Scale 5 levels -> numeric 1-5
@@ -20,10 +20,14 @@
    - Used ANOVA test to compare feature means across Target groups
    - Selected Top 10 Features with lowest p-values
 
+5. Text Mining & Insight Extraction:
+   - Extracted boolean features from open-ended responses
+   - Transformed qualitative pain points into actionable columns
+
 === Data Quality & Cleanliness ===
 
 1. Removed rows with incomplete data (NaN in key columns)
-2. Logic Check between cat experience and detailed responses
+2. Removed respondents with no cat experience
 3. Standardized open-ended data (cat breeds, brands) into categories
 4. Consistently encoded Likert Scales to numeric across all columns
 5. Applied appropriate encoding by data type (Ordinal vs One-Hot)

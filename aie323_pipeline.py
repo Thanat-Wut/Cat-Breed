@@ -43,7 +43,7 @@ print("LOADING DATA...")
 print("=" * 60)
 
 CSV_FILE = 'BU Data from Survey Cases_final(5).csv'
-df_raw = pd.read_csv(CSV_FILE, encoding='cp874', header=1)
+df_raw = pd.read_csv(CSV_FILE, encoding='utf-8-sig', header=1)
 print(f"Raw shape: {df_raw.shape}")
 
 # ============================================================
@@ -116,31 +116,24 @@ df_clean = df.dropna(subset=important_cols)
 print(f"After dropping NaN in key columns: {len(df_clean)} rows (from {len(df)})")
 
 # 2b. Handle Experience filter (Col 1)
-# len=3 → เคย (Yes), len=6 → ไม่เคย (No)
-exp_map = {}
-for val in df_clean['Experience'].dropna().unique():
-    if len(str(val)) == 3:
-        exp_map[val] = 'Yes'
-    elif len(str(val)) == 6:
-        exp_map[val] = 'No'
-    else:
-        exp_map[val] = 'Unknown'
-df_clean['Experience'] = df_clean['Experience'].map(exp_map)
-
-# Logic Check: Flag rows where Experience='No' but they filled detailed ratings
-no_exp = df_clean[df_clean['Experience'] == 'No']
-print(f"Respondents with no experience: {len(no_exp)}")
-# Keep them flagged but don't remove — they may still have valid packaging opinions
-df_clean['Has_Experience'] = (df_clean['Experience'] == 'Yes').astype(int)
+# Drop rows with no experience because they didn't fill out the rest of the survey (as they are irrelevant)
+df_clean = df_clean[df_clean['Experience'] == 'เคย']
+df_clean['Experience'] = 'Yes'
+# We don't need Has_Experience column anymore since everyone remaining is 'Yes'
 
 # 2c. Standardize Cat Breed (Col 3)
 def categorize_breed(text):
     if pd.isna(text):
         return 'Unknown'
     text = str(text).lower()
-    purebreds = ['british', 'persian', 'scottish', 'munchkin', 'ragdoll',
-                 'siamese', 'exotic', 'maine', 'bengal', 'american',
-                 'sphynx', 'himalayan', 'abyssinian', 'russian']
+    purebreds = [
+        'british', 'persian', 'scottish', 'munchkin', 'ragdoll',
+        'siamese', 'exotic', 'maine', 'bengal', 'american',
+        'sphynx', 'himalayan', 'abyssinian', 'russian',
+        'เปอร์เซีย', 'สก็อต', 'สก๊อต', 'สกอต', 'บริติช', 'บริทิช', 'ช็อตแฮร์', 'ช้อตแฮร์', 'ชอทแฮร์',
+        'มัชกิ้น', 'แรคดอล', 'เมนคูน', 'เบงกอล', 'อเมริกัน', 'เอ็กโซติก',
+        'วิเชียรมาศ', 'หิมาลายัน', 'หิมารยัน', 'ขาวมณี', 'โกนจา', 'ศุภลักษณ์', 'สีสวาด', 'โคราช'
+    ]
     for breed in purebreds:
         if breed in text:
             return 'Purebred'
@@ -155,19 +148,27 @@ def standardize_brand(text):
         return 'Unknown'
     text = str(text).lower()
     brand_map = {
-        'royal canin': 'Royal Canin', 'royalcanin': 'Royal Canin',
-        'whiskas': 'Whiskas', 'whiska': 'Whiskas',
-        'me-o': 'Me-O', 'meo': 'Me-O',
-        'projen': 'Projen',
-        'king cat': 'King Cat', 'kingcat': 'King Cat',
-        'you-o': 'You-O', 'you o': 'You-O',
-        'sheba': 'Sheba',
-        'catival': 'Catival', 'katival': 'Catival',
-        'pramy': 'Pramy',
-        'wills': 'Wills', 'will': 'Wills',
-        'smarth': 'SmartHeart', 'smart heart': 'SmartHeart',
-        'purina': 'Purina', 'friskies': 'Purina',
-        'hills': "Hill's", "hill's": "Hill's",
+        'royal canin': 'Royal Canin', 'royalcanin': 'Royal Canin', 'รอยัลคานิน': 'Royal Canin',
+        'whiskas': 'Whiskas', 'whiska': 'Whiskas', 'วิสกัส': 'Whiskas', 'วิสกัต': 'Whiskas', 'วิสคัส': 'Whiskas',
+        'me-o': 'Me-O', 'meo': 'Me-O', 'มีโอ': 'Me-O',
+        'projen': 'Projen', 'โปรเจน': 'Projen',
+        'king cat': 'King Cat', 'kingcat': 'King Cat', 'kingkat': 'King Cat', 'king cot': 'King Cat', 'คิงแคท': 'King Cat', 'คิงส์แคท': 'King Cat', 'คิงงแคท': 'King Cat', 'คิง แคท': 'King Cat',
+        'you-o': 'You-O', 'you o': 'You-O', 'youo': 'You-O', 'ยูโอ': 'You-O',
+        'sheba': 'Sheba', 'ชีบา': 'Sheba',
+        'catival': 'Kativa/Kaniva', 'katival': 'Kativa/Kaniva', 'kativa': 'Kativa/Kaniva', 'cativa': 'Kativa/Kaniva', 'kaniva': 'Kativa/Kaniva', 'แคทิวา': 'Kativa/Kaniva', 'แคทิว่า': 'Kativa/Kaniva',
+        'pramy': 'Pramy', 'พรามี่': 'Pramy',
+        'wills': 'Wills', 'will': 'Wills', 'วิล': 'Wills',
+        'smarth': 'SmartHeart', 'smart heart': 'SmartHeart', 'สมาร์ทฮาร์ท': 'SmartHeart', 'smartbrain': 'SmartHeart',
+        'purina': 'Purina', 'purino': 'Purina', 'friskies': 'Purina', 'purena': 'Purina', 'พูริโน่': 'Purina', 'ภูริโน': 'Purina', 'เพียวริน่า': 'Purina', 'ฟริสกี้': 'Purina',
+        'hills': "Hill's", "hill's": "Hill's", 'ฮิลส์': "Hill's",
+        'buzz': 'Buzz', 'บัซ': 'Buzz',
+        'solid gold': 'Solid Gold', 'โซลิดโกลด์': 'Solid Gold',
+        'taste of the wild': 'Taste of the Wild',
+        'petheria': 'Petheria', 'pateria': 'Petheria',
+        'perfecta': 'Perfecta', 'เพอร์เฟคต้า': 'Perfecta',
+        'maxima': 'Maxima', 'แม็กซิม่า': 'Maxima',
+        'hero cat': 'Hero Cat', 'ฮีโร่แคท': 'Hero Cat',
+        'oliver': 'Oliver', 'โอลิเวอร์': 'Oliver'
     }
     for keyword, std_name in brand_map.items():
         if keyword in text:
@@ -187,12 +188,11 @@ print("STEP 3: FEATURE SELECTION & ENCODING")
 print("=" * 60)
 
 # 3a. Likert Scale → Numeric (Purchase Decision Factors, cols 5-9)
-# len=3→มาก=4, len=4→น้อย=2, len=7→ปานกลาง=3, len=9→มากที่สุด=5, len=10→น้อยที่สุด=1
 def map_likert_5(val):
     if pd.isna(val):
         return np.nan
-    l = len(str(val))
-    return {9: 5, 3: 4, 7: 3, 4: 2, 10: 1}.get(l, np.nan)
+    mapping = {'มากที่สุด': 5, 'มาก': 4, 'ปานกลาง': 3, 'น้อย': 2, 'น้อยที่สุด': 1}
+    return mapping.get(str(val).strip(), np.nan)
 
 likert5_cols = [
     'Factor_Taste', 'Factor_Brand_Rep', 'Factor_Price',
@@ -206,12 +206,11 @@ for col in likert5_cols:
 print(f"Likert-5 encoded: {len(likert5_cols)} columns")
 
 # 3b. Option Ratings → Numeric (4-point scale)
-# len=14→เห็นด้วยที่สุด=4, len=8→เห็นด้วย=3, len=4→เฉยๆ=2, len=11→ไม่เห็นด้วย=1
 def map_likert_4(val):
     if pd.isna(val):
         return np.nan
-    l = len(str(val))
-    return {14: 4, 8: 3, 4: 2, 11: 1}.get(l, np.nan)
+    mapping = {'เห็นด้วยที่สุด': 4, 'เห็นด้วยอย่างยิ่ง': 4, 'เห็นด้วย': 3, 'เฉยๆ': 2, 'ไม่เห็นด้วย': 1, 'ไม่เห็นด้วยเลย': 1}
+    return mapping.get(str(val).strip(), np.nan)
 
 option_cols = [c for c in df_clean.columns if c.startswith('Opt')]
 for col in option_cols:
@@ -234,32 +233,19 @@ df_clean['Age_Ordinal'] = df_clean['Age'].map(age_map)
 print(f"Age ordinal encoded: {age_map}")
 
 # 3d. One-Hot Encoding for Gender
-gender_map = {}
-for val in df_clean['Gender'].dropna().unique():
-    l = len(str(val))
-    if l == 3:
-        gender_map[val] = 'Male'
-    elif l == 4:
-        gender_map[val] = 'Female'
-    else:
-        gender_map[val] = 'Other'
-df_clean['Gender_Label'] = df_clean['Gender'].map(gender_map)
+gender_map = {'ชาย': 'Male', 'หญิง': 'Female', 'อื่นๆ': 'Other'}
+df_clean['Gender_Label'] = df_clean['Gender'].map(gender_map).fillna('Other')
 gender_dummies = pd.get_dummies(df_clean['Gender_Label'], prefix='Gender')
 df_clean = pd.concat([df_clean, gender_dummies], axis=1)
 
 # 3e. One-Hot Encoding for Marital Status
-marital_map = {}
-for val in df_clean['Marital_Status'].dropna().unique():
-    l = len(str(val))
-    if l == 11:
-        marital_map[val] = 'Single'
-    elif l == 21:
-        marital_map[val] = 'Married_Children'
-    elif l == 12:
-        marital_map[val] = 'Married_NoChildren'
-    else:
-        marital_map[val] = 'Divorced'
-df_clean['Marital_Label'] = df_clean['Marital_Status'].map(marital_map)
+marital_map = {
+    'โสด ไม่มีแฟน': 'Single',
+    'มีแฟนแต่ยังไม่แต่งงาน': 'In_Relationship',
+    'แต่งงานแล้ว': 'Married',
+    'หย่าร้าง/เป็นม่าย': 'Divorced'
+}
+df_clean['Marital_Label'] = df_clean['Marital_Status'].map(marital_map).fillna('Other')
 marital_dummies = pd.get_dummies(df_clean['Marital_Label'], prefix='Marital')
 df_clean = pd.concat([df_clean, marital_dummies], axis=1)
 print(f"One-Hot encoded Gender & Marital Status")
@@ -273,7 +259,7 @@ le = LabelEncoder()
 target_encoded = le.fit_transform(df_clean['Target_Option'].dropna())
 
 # Collect all numeric feature columns
-feature_cols = likert5_cols + option_cols + ['Age_Ordinal', 'Has_Experience']
+feature_cols = likert5_cols + option_cols + ['Age_Ordinal']
 feature_cols += [c for c in df_clean.columns if c.startswith('Gender_') or c.startswith('Marital_')]
 
 # ANOVA for numeric features
@@ -305,6 +291,35 @@ print(top10.to_string())
 
 top10_features = top10.index.tolist()
 print(f"\nTop 10 features: {top10_features}")
+
+# 3g. Text Mining & Insight Extraction
+print("\n--- Insight Extraction (Text Mining) ---")
+insight_cols = []
+
+# Define keywords for each insight
+insights_map = {
+    'Need_Clear_Window': ['ใส', 'มองเห็น', 'ทะลุ'],
+    'Need_Pour_Lid': ['ฝา', 'ขวด', 'เท'],
+    'Need_Small_Packs': ['แบ่ง', 'ถุงเล็ก', 'ห่อย่อย', 'ซองย่อย', 'เล็กๆ'],
+    'Need_Sodium_Info': ['โซเดียม', 'เค็ม', 'ไต'],
+    'Need_Big_Text': ['ตัวใหญ่', 'ชัดเจน', 'อ่านง่าย'],
+    'Design_Matte': ['ด้าน', 'เนื้อด้าน'],
+    'Design_Cartoon': ['การ์ตูน', 'วาด', 'ตาโต'],
+    'Need_Topping': ['ท็อปปิ้ง', 'เนื้อจริง', 'ฟรีซดราย', 'ผสมเนื้อ'],
+    'Need_Interactive': ['ของแถม', 'กล่องสุ่ม', 'ดม', 'ลับเล็บ', 'เล่น']
+}
+
+# Combine text columns to search in
+df_clean['Combined_Text'] = df_clean['Packaging_Suggestion'].fillna('') + ' ' + df_clean['Current_Brand_Detail'].fillna('')
+
+for col_name, keywords in insights_map.items():
+    # Create regex pattern: keyword1|keyword2|keyword3
+    pattern = '|'.join(keywords)
+    # Extract as boolean (1/0)
+    df_clean[col_name] = df_clean['Combined_Text'].str.contains(pattern, case=False, na=False).astype(int)
+    insight_cols.append(col_name)
+
+print(f"Extracted {len(insight_cols)} insight features from open-ended questions.")
 
 # ============================================================
 # STEP 4: DATA VISUALIZATION
@@ -409,6 +424,56 @@ if opt_means:
     plt.savefig('chart4_mean_option_scores.png', dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Chart {fig_num} saved: chart4_mean_option_scores.png")
+    fig_num += 1
+
+# 4e. Qualitative Insights Distribution
+if insight_cols:
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # Sum the occurrences of each insight
+    insight_counts = df_clean[insight_cols].sum().sort_values(ascending=True)
+    bars = ax.barh(insight_counts.index, insight_counts.values, color=COLORS[0], edgecolor='white')
+    ax.set_title('Top Requested Features & Pain Points (from Text)', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Number of Mentions')
+    
+    # Add values at the end of bars
+    for bar in bars:
+        width = bar.get_width()
+        ax.text(width + 0.5, bar.get_y() + bar.get_height()/2, 
+                f'{int(width)}', va='center', fontweight='bold', fontsize=10)
+    
+    plt.tight_layout()
+    plt.savefig('chart5_insights_distribution.png', dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"Chart {fig_num} saved: chart5_insights_distribution.png")
+    fig_num += 1
+
+# 4f. Top Insights vs Target Option
+if insight_cols:
+    # Select top 5 most mentioned insights for cross-tabulation
+    top_insights = insight_counts.tail(5).index.tolist()
+    
+    # Prepare data for plotting
+    plot_data = pd.DataFrame()
+    for col in top_insights:
+        # Get count of people who mentioned this insight AND chose a specific option
+        counts = df_clean[df_clean[col] == 1].groupby('Target_Option').size()
+        plot_data[col] = counts
+        
+    plot_data = plot_data.fillna(0)
+    
+    if not plot_data.empty:
+        ax = plot_data.T.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='Set3')
+        ax.set_title('Top 5 Requested Features by Target Packaging Option', fontsize=14, fontweight='bold')
+        ax.set_xlabel('Feature / Insight')
+        ax.set_ylabel('Number of Mentions')
+        plt.xticks(rotation=45, ha='right')
+        plt.legend(title='Target Option')
+        
+        plt.tight_layout()
+        plt.savefig('chart6_insights_vs_option.png', dpi=150, bbox_inches='tight')
+        plt.close()
+        print(f"Chart {fig_num} saved: chart6_insights_vs_option.png")
+        fig_num += 1
 
 # ============================================================
 # STEP 5: EXPORT & SUMMARY
@@ -419,10 +484,11 @@ print("=" * 60)
 
 # 5a. Select final columns for export
 export_cols = (
-    ['Target_Option', 'Has_Experience', 'Cat_Breed_Cat', 'Brand_Std']
+    ['Target_Option', 'Experience', 'Cat_Breed_Cat', 'Brand_Std']
     + likert5_cols + option_cols
     + ['Age_Ordinal', 'Gender_Label', 'Marital_Label']
     + [c for c in df_clean.columns if c.startswith('Gender_') or c.startswith('Marital_')]
+    + insight_cols
 )
 export_cols = [c for c in export_cols if c in df_clean.columns]
 df_export = df_clean[export_cols].copy()
@@ -444,7 +510,7 @@ summary_text = """
    - Filtered out 851 empty rows, keeping usable data
    - Grouped cat breeds into 'Purebred' vs 'Mixed/Stray'
    - Standardized brand names into consistent groups
-   - Logic Check: Flagged respondents with no cat experience
+   - Dropped respondents with no cat experience (as they skipped the rest of the survey)
 
 3. Feature Encoding:
    - Likert Scale 5 levels -> numeric 1-5
@@ -456,10 +522,14 @@ summary_text = """
    - Used ANOVA test to compare feature means across Target groups
    - Selected Top 10 Features with lowest p-values
 
+5. Text Mining & Insight Extraction:
+   - Extracted boolean features from open-ended responses
+   - Transformed qualitative pain points into actionable columns
+
 === Data Quality & Cleanliness ===
 
 1. Removed rows with incomplete data (NaN in key columns)
-2. Logic Check between cat experience and detailed responses
+2. Removed respondents with no cat experience
 3. Standardized open-ended data (cat breeds, brands) into categories
 4. Consistently encoded Likert Scales to numeric across all columns
 5. Applied appropriate encoding by data type (Ordinal vs One-Hot)
@@ -473,3 +543,4 @@ print("   - Cleaned data: cleaned_survey_data.csv")
 print("   - Summary: presentation_summary.txt")
 print("   - Charts: chart1_demographics.png, chart2_target_distribution.png,")
 print("             chart3_correlation_heatmap.png, chart4_mean_option_scores.png")
+print("             chart5_insights_distribution.png, chart6_insights_vs_option.png")
