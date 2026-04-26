@@ -1,33 +1,8 @@
-
 === Logic for Target & Feature Selection ===
-
-1. Target Variable: Extract column 'Top 3 Choices', take only
-   the 1st choice (first item before comma) as Target_Option
-
+1. Target Variable: Extract 'Top 3 Choices', take 1st choice.
 2. Data Cleaning:
-   - Filtered out 851 empty rows, keeping usable data
-   - Grouped cat breeds into 'Purebred' vs 'Mixed/Stray'
-   - Standardized brand names into consistent groups
-   - Dropped respondents with no cat experience (as they skipped the rest of the survey)
-
-3. Feature Encoding:
-   - Likert Scale 5 levels -> numeric 1-5
-   - Option Rating 4 levels -> numeric 1-4
-   - Age -> Ordinal Encoding (1-4)
-   - Gender/Marital -> One-Hot Encoding
-
-4. Feature Selection:
-   - Used ANOVA test to compare feature means across Target groups
-   - Selected Top 10 Features with lowest p-values
-
-5. Text Mining & Insight Extraction:
-   - Extracted boolean features from open-ended responses
-   - Transformed qualitative pain points into actionable columns
-
-=== Data Quality & Cleanliness ===
-
-1. Removed rows with incomplete data (NaN in key columns)
-2. Removed respondents with no cat experience
-3. Standardized open-ended data (cat breeds, brands) into categories
-4. Consistently encoded Likert Scales to numeric across all columns
-5. Applied appropriate encoding by data type (Ordinal vs One-Hot)
+   - Dropped missing rows & 'No Cat Experience' respondents.
+   - Standardized breeds and brands from config.
+3. Feature Encoding: Ordinal & One-Hot Encoding.
+4. Feature Selection: ANOVA test for Top 10 features.
+5. Text Mining: Boolean features extracted from config insights.

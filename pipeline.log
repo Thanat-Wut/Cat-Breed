@@ -1,0 +1,702 @@
+2026-04-25 23:35:15,296 - INFO - Configuration loaded successfully.
+2026-04-25 23:35:15,296 - INFO - ============================================================
+2026-04-25 23:35:15,296 - INFO - LOADING DATA...
+2026-04-25 23:35:15,296 - INFO - ============================================================
+2026-04-25 23:35:15,335 - INFO - Raw shape: (999, 76)
+2026-04-25 23:35:15,336 - INFO - Columns renamed: 76 columns
+2026-04-25 23:35:15,336 - INFO - 
+============================================================
+2026-04-25 23:35:15,336 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-25 23:35:15,336 - INFO - ============================================================
+2026-04-25 23:35:15,338 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-25 23:35:15,338 - INFO - 
+============================================================
+2026-04-25 23:35:15,338 - INFO - STEP 2: DATA CLEANING
+2026-04-25 23:35:15,338 - INFO - ============================================================
+2026-04-25 23:35:15,339 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-25 23:35:15,340 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-25 23:35:15,341 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-25 23:35:15,341 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-25 23:35:15,341 - INFO - 
+============================================================
+2026-04-25 23:35:15,341 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-25 23:35:15,341 - INFO - ============================================================
+2026-04-25 23:35:15,344 - INFO - Likert-5 encoded: 13 columns
+2026-04-25 23:35:15,352 - INFO - Option ratings encoded: 50 columns
+2026-04-25 23:35:15,354 - INFO - Age ordinal encoded
+2026-04-25 23:35:15,356 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-25 23:35:15,356 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-25 23:35:15,590 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-25 23:35:15,590 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-25 23:35:15,591 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-25 23:35:15,596 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-25 23:35:15,596 - INFO - 
+============================================================
+2026-04-25 23:35:15,597 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-25 23:35:15,597 - INFO - ============================================================
+2026-04-25 23:35:16,484 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-25 23:35:16,695 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-25 23:35:17,038 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-25 23:35:17,219 - INFO - Chart 4 saved: chart4_mean_option_scores.png
+2026-04-25 23:35:17,382 - INFO - Chart 5 saved: chart5_insights_distribution.png
+2026-04-25 23:35:17,659 - INFO - Chart 6 saved: chart6_insights_vs_option.png
+2026-04-25 23:35:17,659 - INFO - 
+============================================================
+2026-04-25 23:35:17,659 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-25 23:35:17,659 - INFO - ============================================================
+2026-04-25 23:35:17,670 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-25 23:35:17,671 - INFO - Exported: presentation_summary.txt
+2026-04-25 23:35:17,671 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-25 23:42:23,202 - INFO - Configuration loaded successfully.
+2026-04-25 23:42:23,203 - INFO - ============================================================
+2026-04-25 23:42:23,203 - INFO - LOADING DATA...
+2026-04-25 23:42:23,203 - INFO - ============================================================
+2026-04-25 23:42:23,214 - INFO - Raw shape: (999, 76)
+2026-04-25 23:42:23,214 - INFO - Columns renamed: 76 columns
+2026-04-25 23:42:23,215 - INFO - 
+============================================================
+2026-04-25 23:42:23,215 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-25 23:42:23,215 - INFO - ============================================================
+2026-04-25 23:42:23,216 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-25 23:42:23,216 - INFO - 
+============================================================
+2026-04-25 23:42:23,216 - INFO - STEP 2: DATA CLEANING
+2026-04-25 23:42:23,217 - INFO - ============================================================
+2026-04-25 23:42:23,218 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-25 23:42:23,219 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-25 23:42:23,220 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-25 23:42:23,221 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-25 23:42:23,221 - INFO - 
+============================================================
+2026-04-25 23:42:23,221 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-25 23:42:23,221 - INFO - ============================================================
+2026-04-25 23:42:23,224 - INFO - Likert-5 encoded: 13 columns
+2026-04-25 23:42:23,234 - INFO - Option ratings encoded: 50 columns
+2026-04-25 23:42:23,235 - INFO - Age ordinal encoded
+2026-04-25 23:42:23,238 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-25 23:42:23,238 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-25 23:42:23,410 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-25 23:42:23,411 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-25 23:42:23,411 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-25 23:42:23,418 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-25 23:42:23,418 - INFO - 
+============================================================
+2026-04-25 23:42:23,418 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-25 23:42:23,418 - INFO - ============================================================
+2026-04-25 23:42:23,703 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-25 23:42:23,856 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-25 23:42:24,137 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-25 23:42:24,196 - WARNING - Error in generating mean scores plot: 'dict' object has no attribute 'index'
+2026-04-25 23:42:24,337 - INFO - Chart 4 saved: chart5_insights_distribution.png
+2026-04-25 23:42:24,493 - INFO - Chart 5 saved: chart6_insights_vs_option.png
+2026-04-25 23:42:24,493 - INFO - 
+============================================================
+2026-04-25 23:42:24,494 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-25 23:42:24,494 - INFO - ============================================================
+2026-04-25 23:42:24,498 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-25 23:42:24,499 - INFO - Exported: presentation_summary.txt
+2026-04-25 23:42:24,499 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-25 23:43:13,725 - INFO - Configuration loaded successfully.
+2026-04-25 23:43:13,725 - INFO - ============================================================
+2026-04-25 23:43:13,725 - INFO - LOADING DATA...
+2026-04-25 23:43:13,726 - INFO - ============================================================
+2026-04-25 23:43:13,736 - INFO - Raw shape: (999, 76)
+2026-04-25 23:43:13,737 - INFO - Columns renamed: 76 columns
+2026-04-25 23:43:13,737 - INFO - 
+============================================================
+2026-04-25 23:43:13,737 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-25 23:43:13,738 - INFO - ============================================================
+2026-04-25 23:43:13,739 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-25 23:43:13,740 - INFO - 
+============================================================
+2026-04-25 23:43:13,740 - INFO - STEP 2: DATA CLEANING
+2026-04-25 23:43:13,740 - INFO - ============================================================
+2026-04-25 23:43:13,741 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-25 23:43:13,743 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-25 23:43:13,745 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-25 23:43:13,745 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-25 23:43:13,746 - INFO - 
+============================================================
+2026-04-25 23:43:13,746 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-25 23:43:13,746 - INFO - ============================================================
+2026-04-25 23:43:13,752 - INFO - Likert-5 encoded: 13 columns
+2026-04-25 23:43:13,763 - INFO - Option ratings encoded: 50 columns
+2026-04-25 23:43:13,764 - INFO - Age ordinal encoded
+2026-04-25 23:43:13,767 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-25 23:43:13,767 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-25 23:43:13,934 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-25 23:43:13,934 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-25 23:43:13,935 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-25 23:43:13,940 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-25 23:43:13,940 - INFO - 
+============================================================
+2026-04-25 23:43:13,940 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-25 23:43:13,941 - INFO - ============================================================
+2026-04-25 23:43:14,208 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-25 23:43:14,366 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-25 23:43:14,659 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-25 23:43:14,714 - WARNING - Error in generating mean scores plot: 'dict' object has no attribute 'index'
+2026-04-25 23:43:14,858 - INFO - Chart 4 saved: chart5_insights_distribution.png
+2026-04-25 23:43:15,014 - INFO - Chart 5 saved: chart6_insights_vs_option.png
+2026-04-25 23:43:15,014 - INFO - 
+============================================================
+2026-04-25 23:43:15,014 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-25 23:43:15,014 - INFO - ============================================================
+2026-04-25 23:43:15,018 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-25 23:43:15,019 - INFO - Exported: presentation_summary.txt
+2026-04-25 23:43:15,019 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-25 23:43:24,411 - INFO - Configuration loaded successfully.
+2026-04-25 23:43:24,412 - INFO - ============================================================
+2026-04-25 23:43:24,412 - INFO - LOADING DATA...
+2026-04-25 23:43:24,412 - INFO - ============================================================
+2026-04-25 23:43:24,423 - INFO - Raw shape: (999, 76)
+2026-04-25 23:43:24,424 - INFO - Columns renamed: 76 columns
+2026-04-25 23:43:24,424 - INFO - 
+============================================================
+2026-04-25 23:43:24,424 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-25 23:43:24,424 - INFO - ============================================================
+2026-04-25 23:43:24,426 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-25 23:43:24,426 - INFO - 
+============================================================
+2026-04-25 23:43:24,427 - INFO - STEP 2: DATA CLEANING
+2026-04-25 23:43:24,427 - INFO - ============================================================
+2026-04-25 23:43:24,428 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-25 23:43:24,429 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-25 23:43:24,430 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-25 23:43:24,430 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-25 23:43:24,431 - INFO - 
+============================================================
+2026-04-25 23:43:24,431 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-25 23:43:24,431 - INFO - ============================================================
+2026-04-25 23:43:24,433 - INFO - Likert-5 encoded: 13 columns
+2026-04-25 23:43:24,442 - INFO - Option ratings encoded: 50 columns
+2026-04-25 23:43:24,443 - INFO - Age ordinal encoded
+2026-04-25 23:43:24,446 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-25 23:43:24,446 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-25 23:43:24,625 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-25 23:43:24,626 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-25 23:43:24,627 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-25 23:43:24,632 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-25 23:43:24,633 - INFO - 
+============================================================
+2026-04-25 23:43:24,633 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-25 23:43:24,633 - INFO - ============================================================
+2026-04-25 23:43:24,930 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-25 23:43:25,095 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-25 23:43:25,382 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-25 23:43:25,447 - WARNING - Error in generating mean scores plot: 'dict' object has no attribute 'index'
+2026-04-25 23:43:25,591 - INFO - Chart 4 saved: chart5_insights_distribution.png
+2026-04-25 23:43:25,752 - INFO - Chart 5 saved: chart6_insights_vs_option.png
+2026-04-25 23:43:25,752 - INFO - 
+============================================================
+2026-04-25 23:43:25,752 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-25 23:43:25,752 - INFO - ============================================================
+2026-04-25 23:43:25,756 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-25 23:43:25,756 - INFO - Exported: presentation_summary.txt
+2026-04-25 23:43:25,757 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-25 23:44:50,970 - INFO - Configuration loaded successfully.
+2026-04-25 23:44:50,970 - INFO - ============================================================
+2026-04-25 23:44:50,970 - INFO - LOADING DATA...
+2026-04-25 23:44:50,971 - INFO - ============================================================
+2026-04-25 23:44:50,983 - INFO - Raw shape: (999, 76)
+2026-04-25 23:44:50,984 - INFO - Columns renamed: 76 columns
+2026-04-25 23:44:50,984 - INFO - 
+============================================================
+2026-04-25 23:44:50,984 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-25 23:44:50,984 - INFO - ============================================================
+2026-04-25 23:44:50,985 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-25 23:44:50,985 - INFO - 
+============================================================
+2026-04-25 23:44:50,985 - INFO - STEP 2: DATA CLEANING
+2026-04-25 23:44:50,985 - INFO - ============================================================
+2026-04-25 23:44:50,986 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-25 23:44:50,988 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-25 23:44:50,989 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-25 23:44:50,989 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-25 23:44:50,989 - INFO - 
+============================================================
+2026-04-25 23:44:50,989 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-25 23:44:50,989 - INFO - ============================================================
+2026-04-25 23:44:50,991 - INFO - Likert-5 encoded: 13 columns
+2026-04-25 23:44:50,999 - INFO - Option ratings encoded: 50 columns
+2026-04-25 23:44:51,000 - INFO - Age ordinal encoded
+2026-04-25 23:44:51,003 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-25 23:44:51,003 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-25 23:44:51,193 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-25 23:44:51,194 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-25 23:44:51,194 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-25 23:44:51,199 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-25 23:44:51,200 - INFO - 
+============================================================
+2026-04-25 23:44:51,200 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-25 23:44:51,200 - INFO - ============================================================
+2026-04-25 23:44:51,557 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-25 23:44:51,729 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-25 23:44:52,058 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-25 23:44:52,218 - INFO - Chart 4 saved: chart4_mean_option_scores.png
+2026-04-25 23:44:52,372 - INFO - Chart 5 saved: chart5_insights_distribution.png
+2026-04-25 23:44:52,550 - INFO - Chart 6 saved: chart6_insights_vs_option.png
+2026-04-25 23:44:52,550 - INFO - 
+============================================================
+2026-04-25 23:44:52,550 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-25 23:44:52,550 - INFO - ============================================================
+2026-04-25 23:44:52,553 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-25 23:44:52,554 - INFO - Exported: presentation_summary.txt
+2026-04-25 23:44:52,555 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-25 23:45:16,535 - INFO - Configuration loaded successfully.
+2026-04-25 23:45:16,535 - INFO - ============================================================
+2026-04-25 23:45:16,535 - INFO - LOADING DATA...
+2026-04-25 23:45:16,536 - INFO - ============================================================
+2026-04-25 23:45:16,546 - INFO - Raw shape: (999, 76)
+2026-04-25 23:45:16,547 - INFO - Columns renamed: 76 columns
+2026-04-25 23:45:16,547 - INFO - 
+============================================================
+2026-04-25 23:45:16,548 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-25 23:45:16,548 - INFO - ============================================================
+2026-04-25 23:45:16,550 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-25 23:45:16,550 - INFO - 
+============================================================
+2026-04-25 23:45:16,551 - INFO - STEP 2: DATA CLEANING
+2026-04-25 23:45:16,551 - INFO - ============================================================
+2026-04-25 23:45:16,553 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-25 23:45:16,555 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-25 23:45:16,556 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-25 23:45:16,556 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-25 23:45:16,557 - INFO - 
+============================================================
+2026-04-25 23:45:16,557 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-25 23:45:16,557 - INFO - ============================================================
+2026-04-25 23:45:16,567 - INFO - Likert-5 encoded: 13 columns
+2026-04-25 23:45:16,578 - INFO - Option ratings encoded: 50 columns
+2026-04-25 23:45:16,579 - INFO - Age ordinal encoded
+2026-04-25 23:45:16,581 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-25 23:45:16,582 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-25 23:45:16,759 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-25 23:45:16,760 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-25 23:45:16,760 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-25 23:45:16,766 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-25 23:45:16,767 - INFO - 
+============================================================
+2026-04-25 23:45:16,767 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-25 23:45:16,767 - INFO - ============================================================
+2026-04-25 23:45:17,028 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-25 23:45:17,188 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-25 23:45:17,457 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-25 23:45:17,593 - INFO - Chart 4 saved: chart4_mean_option_scores.png
+2026-04-25 23:45:17,722 - INFO - Chart 5 saved: chart5_insights_distribution.png
+2026-04-25 23:45:17,884 - INFO - Chart 6 saved: chart6_insights_vs_option.png
+2026-04-25 23:45:17,884 - INFO - 
+============================================================
+2026-04-25 23:45:17,884 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-25 23:45:17,885 - INFO - ============================================================
+2026-04-25 23:45:17,888 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-25 23:45:17,889 - INFO - Exported: presentation_summary.txt
+2026-04-25 23:45:17,889 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-26 18:22:10,348 - INFO - Configuration loaded successfully.
+2026-04-26 18:22:10,348 - INFO - ============================================================
+2026-04-26 18:22:10,348 - INFO - LOADING DATA...
+2026-04-26 18:22:10,348 - INFO - ============================================================
+2026-04-26 18:22:10,409 - INFO - Raw shape: (999, 76)
+2026-04-26 18:22:10,410 - INFO - Columns renamed: 76 columns
+2026-04-26 18:22:10,410 - INFO - 
+============================================================
+2026-04-26 18:22:10,410 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-26 18:22:10,410 - INFO - ============================================================
+2026-04-26 18:22:10,415 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-26 18:22:10,415 - INFO - 
+============================================================
+2026-04-26 18:22:10,415 - INFO - STEP 2: DATA CLEANING
+2026-04-26 18:22:10,415 - INFO - ============================================================
+2026-04-26 18:22:10,418 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-26 18:22:10,420 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-26 18:22:10,421 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-26 18:22:10,421 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-26 18:22:10,421 - INFO - 
+============================================================
+2026-04-26 18:22:10,421 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-26 18:22:10,421 - INFO - ============================================================
+2026-04-26 18:22:10,425 - INFO - Likert-5 encoded: 13 columns
+2026-04-26 18:22:10,435 - INFO - Option ratings encoded: 50 columns
+2026-04-26 18:22:10,437 - INFO - Age ordinal encoded
+2026-04-26 18:22:10,441 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-26 18:22:10,441 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-26 18:22:10,619 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-26 18:22:10,620 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-26 18:22:10,620 - INFO - 
+--- Feature Importance (Random Forest) ---
+2026-04-26 18:22:10,624 - WARNING - Failed to calculate Random Forest importance: could not convert string to float: 'มีแฟนแต่ยังไม่แต่งงาน'
+2026-04-26 18:22:10,624 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-26 18:22:10,630 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-26 18:22:10,630 - INFO - 
+============================================================
+2026-04-26 18:22:10,630 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-26 18:22:10,630 - INFO - ============================================================
+2026-04-26 18:22:11,649 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-26 18:22:11,805 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-26 18:22:12,109 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-26 18:22:12,256 - INFO - Chart 4 saved: chart4_mean_option_scores.png
+2026-04-26 18:22:12,400 - INFO - Chart 5 saved: chart5_insights_distribution.png
+2026-04-26 18:22:12,707 - INFO - Chart 6 saved: chart6_insights_vs_option.png
+2026-04-26 18:22:12,707 - INFO - 
+============================================================
+2026-04-26 18:22:12,707 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-26 18:22:12,708 - INFO - ============================================================
+2026-04-26 18:22:12,718 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-26 18:22:12,719 - INFO - Exported: presentation_summary.txt
+2026-04-26 18:22:12,719 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-26 18:22:39,865 - INFO - Configuration loaded successfully.
+2026-04-26 18:22:39,865 - INFO - ============================================================
+2026-04-26 18:22:39,865 - INFO - LOADING DATA...
+2026-04-26 18:22:39,865 - INFO - ============================================================
+2026-04-26 18:22:39,877 - INFO - Raw shape: (999, 76)
+2026-04-26 18:22:39,877 - INFO - Columns renamed: 76 columns
+2026-04-26 18:22:39,877 - INFO - 
+============================================================
+2026-04-26 18:22:39,877 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-26 18:22:39,877 - INFO - ============================================================
+2026-04-26 18:22:39,879 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-26 18:22:39,879 - INFO - 
+============================================================
+2026-04-26 18:22:39,879 - INFO - STEP 2: DATA CLEANING
+2026-04-26 18:22:39,879 - INFO - ============================================================
+2026-04-26 18:22:39,880 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-26 18:22:39,881 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-26 18:22:39,882 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-26 18:22:39,882 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-26 18:22:39,882 - INFO - 
+============================================================
+2026-04-26 18:22:39,882 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-26 18:22:39,882 - INFO - ============================================================
+2026-04-26 18:22:39,885 - INFO - Likert-5 encoded: 13 columns
+2026-04-26 18:22:39,893 - INFO - Option ratings encoded: 50 columns
+2026-04-26 18:22:39,894 - INFO - Age ordinal encoded
+2026-04-26 18:22:39,896 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-26 18:22:39,896 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-26 18:22:40,063 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-26 18:22:40,063 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-26 18:22:40,063 - INFO - 
+--- Feature Importance (Random Forest) ---
+2026-04-26 18:22:40,159 - INFO - 
+Top 10 Features (Random Forest):
+             Feature  Importance
+Opt1_Purchase_Intent    0.052709
+   Opt1_Premium_Feel    0.040933
+      Opt1_Modernity    0.034732
+ Opt1_Attractiveness    0.031054
+ Opt2_Attractiveness    0.024974
+Opt2_Purchase_Intent    0.021903
+         Age_Ordinal    0.021888
+  Factor_Ingredients    0.020983
+          Opt1_Trust    0.019314
+      Opt2_Modernity    0.018985
+2026-04-26 18:22:40,159 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-26 18:22:40,164 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-26 18:22:40,164 - INFO - 
+============================================================
+2026-04-26 18:22:40,164 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-26 18:22:40,164 - INFO - ============================================================
+2026-04-26 18:22:40,442 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-26 18:22:40,584 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-26 18:22:40,869 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-26 18:22:41,017 - INFO - Chart 4 saved: chart4_mean_option_scores.png
+2026-04-26 18:22:41,162 - INFO - Chart 5 saved: chart5_insights_distribution.png
+2026-04-26 18:22:41,376 - INFO - Chart 6 saved: chart6_insights_vs_option.png
+2026-04-26 18:22:41,572 - INFO - Chart 7 saved: chart7_rf_feature_importance.png
+2026-04-26 18:22:41,572 - INFO - 
+============================================================
+2026-04-26 18:22:41,572 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-26 18:22:41,572 - INFO - ============================================================
+2026-04-26 18:22:41,577 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-26 18:22:41,577 - INFO - Exported: presentation_summary.txt
+2026-04-26 18:22:41,577 - INFO - 
+[OK] Pipeline completed successfully!
+2026-04-26 21:40:52,546 - INFO - Configuration loaded successfully.
+2026-04-26 21:40:52,546 - INFO - ============================================================
+2026-04-26 21:40:52,546 - INFO - LOADING DATA...
+2026-04-26 21:40:52,546 - INFO - ============================================================
+2026-04-26 21:40:52,582 - INFO - Raw shape: (999, 76)
+2026-04-26 21:40:52,583 - INFO - Columns renamed: 76 columns
+2026-04-26 21:40:52,583 - INFO - 
+============================================================
+2026-04-26 21:40:52,583 - INFO - STEP 1: TARGET VARIABLE IDENTIFICATION
+2026-04-26 21:40:52,583 - INFO - ============================================================
+2026-04-26 21:40:52,584 - INFO - Target_Option created. Distribution:
+Target_Option
+Option 3    55
+Option 1    38
+Option 2    36
+Option 6    10
+Option 7     3
+Option 5     3
+Option 4     2
+Option 8     1
+2026-04-26 21:40:52,584 - INFO - 
+============================================================
+2026-04-26 21:40:52,584 - INFO - STEP 2: DATA CLEANING
+2026-04-26 21:40:52,585 - INFO - ============================================================
+2026-04-26 21:40:52,585 - INFO - After dropping NaN in key columns: 148 rows (from 999)
+2026-04-26 21:40:52,586 - INFO - Cat Breed categories: {'Mixed/Stray': 87, 'Purebred': 61}
+2026-04-26 21:40:52,587 - INFO - Brand categories: {'King Cat': 42, 'Purina': 19, 'You-O': 16, 'Kativa/Kaniva': 15, 'Other': 15, 'Whiskas': 14, 'Projen': 5, 'Buzz': 5, 'Solid Gold': 4, 'Hero Cat': 2}
+2026-04-26 21:40:52,587 - INFO - 
+Cleaned dataset shape: (148, 79)
+2026-04-26 21:40:52,587 - INFO - 
+============================================================
+2026-04-26 21:40:52,587 - INFO - STEP 3: FEATURE SELECTION & ENCODING
+2026-04-26 21:40:52,587 - INFO - ============================================================
+2026-04-26 21:40:52,590 - INFO - Likert-5 encoded: 13 columns
+2026-04-26 21:40:52,598 - INFO - Option ratings encoded: 50 columns
+2026-04-26 21:40:52,598 - INFO - Age ordinal encoded
+2026-04-26 21:40:52,601 - INFO - One-Hot encoded Gender & Marital Status
+2026-04-26 21:40:52,601 - INFO - 
+--- Feature Selection: Top 10 features ---
+2026-04-26 21:40:52,760 - INFO - 
+                         F_stat       p_value
+Opt1_Premium_Feel     13.513483  4.653517e-12
+Opt1_Purchase_Intent  12.175304  5.448447e-11
+Opt1_Modernity        11.234147  3.223486e-10
+Opt1_Attractiveness    9.285953  1.452546e-08
+Opt2_Purchase_Intent   5.776311  2.127479e-05
+Opt2_Attractiveness    5.323774  5.637670e-05
+Opt2_Modernity         5.289083  6.076395e-05
+Opt2_Premium_Feel      4.576545  2.848170e-04
+Opt3_Trust             4.489010  3.445241e-04
+Opt1_Trust             3.863030  1.344365e-03
+2026-04-26 21:40:52,760 - INFO - 
+Top 10 features: ['Opt1_Premium_Feel', 'Opt1_Purchase_Intent', 'Opt1_Modernity', 'Opt1_Attractiveness', 'Opt2_Purchase_Intent', 'Opt2_Attractiveness', 'Opt2_Modernity', 'Opt2_Premium_Feel', 'Opt3_Trust', 'Opt1_Trust']
+2026-04-26 21:40:52,760 - INFO - 
+--- Feature Importance (Random Forest) ---
+2026-04-26 21:40:52,766 - INFO - Filtered 71 features down to 20 using SelectKBest(chi2).
+2026-04-26 21:40:52,847 - INFO - 
+Top 10 Features (Random Forest):
+             Feature  Importance
+  Factor_Ingredients    0.084389
+Opt1_Purchase_Intent    0.079110
+   Opt1_Premium_Feel    0.071813
+ Opt6_Attractiveness    0.068060
+Opt7_Purchase_Intent    0.064972
+ Opt1_Attractiveness    0.063890
+         Age_Ordinal    0.057311
+Opt3_Purchase_Intent    0.056797
+          Opt2_Trust    0.054221
+ Opt2_Attractiveness    0.052803
+2026-04-26 21:40:52,847 - INFO - 
+--- Insight Extraction (Text Mining) ---
+2026-04-26 21:40:52,854 - INFO - Extracted 9 insight features from open-ended questions.
+2026-04-26 21:40:52,854 - INFO - 
+============================================================
+2026-04-26 21:40:52,854 - INFO - STEP 4: DATA VISUALIZATION
+2026-04-26 21:40:52,854 - INFO - ============================================================
+2026-04-26 21:40:53,593 - INFO - Chart 1 saved: chart1_demographics.png
+2026-04-26 21:40:53,728 - INFO - Chart 2 saved: chart2_target_distribution.png
+2026-04-26 21:40:53,998 - INFO - Chart 3 saved: chart3_correlation_heatmap.png
+2026-04-26 21:40:54,133 - INFO - Chart 4 saved: chart4_mean_option_scores.png
+2026-04-26 21:40:54,265 - INFO - Chart 5 saved: chart5_insights_distribution.png
+2026-04-26 21:40:54,534 - INFO - Chart 6 saved: chart6_insights_vs_option.png
+2026-04-26 21:40:54,722 - INFO - Chart 7 saved: chart7_rf_feature_importance.png
+2026-04-26 21:40:54,722 - INFO - 
+============================================================
+2026-04-26 21:40:54,722 - INFO - STEP 5: EXPORT & SUMMARY
+2026-04-26 21:40:54,723 - INFO - ============================================================
+2026-04-26 21:40:54,733 - INFO - Exported: cleaned_survey_data.csv ((148, 89))
+2026-04-26 21:40:54,734 - INFO - Exported: presentation_summary.txt
+2026-04-26 21:40:54,734 - INFO - 
+[OK] Pipeline completed successfully!
