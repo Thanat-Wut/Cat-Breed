@@ -1,30 +1,34 @@
 """
 AIE323 - Data Preparation Pipeline
 ===================================
-โปรเจกต์วิเคราะห์ข้อมูลแบบสอบถาม (Survey Data) 
+โปรเจกต์วิเคราะห์ข้อมูลแบบสอบถาม (Survey Data)
 เรื่องการออกแบบบรรจุภัณฑ์อาหารแมวสำหรับแบรนด์ต่างประเทศที่ต้องการบุกตลาดไทย
 
-ครอบคลุม 5 ขั้นตอน:
-1. Target Variable Identification
-2. Data Cleaning
-3. Feature Selection & Encoding
-4. Data Visualization
-5. Export & Summary
+Hybrid Chain & Parallel Execution:
+- Phase 1: Data Profiling (parallel)
+- Phase 2: Pipeline Stages (chain with internal parallel)
+- Phase 3: Live Diagnostics (after each stage)
 """
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+
+# Set matplotlib backend to Agg BEFORE importing pyplot (fixes tkinter thread issue on Windows)
 import matplotlib
+matplotlib.use('Agg')
+
+import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import chi2_contingency, f_oneway
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_selection import SelectKBest, chi2
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 import json
 import logging
 import sys
+import time
 
 warnings.filterwarnings('ignore')
 
@@ -48,6 +52,85 @@ try:
 except:
     plt.rcParams['font.family'] = 'sans-serif'
 plt.rcParams['axes.unicode_minus'] = False
+
+# ============================================================
+# PIPELINE STAGE BASE CLASS
+# ============================================================
+class PipelineStage:
+    """Base class for pipeline stages with chain dependencies"""
+    name: str = "BaseStage"
+
+    def __init__(self):
+        self.start_time = None
+        self.end_time = None
+
+    def execute(self, context: dict) -> dict:
+        """Execute the stage. Override in subclass."""
+        raise NotImplementedError
+
+    def diagnose(self, context: dict, result: dict) -> str:
+        """Return diagnostic string after execution"""
+        duration = self.end_time - self.start_time if self.end_time and self.start_time else 0
+        return f"{self.name}: completed in {duration:.2f}s"
+
+
+# ============================================================
+# PHASE 1: DATA PROFILING (PARALLEL)
+# ============================================================
+def run_data_profiling(df_raw: pd.DataFrame) -> dict:
+    """Run statistical profiling in parallel using ThreadPoolExecutor"""
+    logging.info("=" * 60)
+    logging.info("PHASE 1: DATA PROFILING (Parallel)")
+    logging.info("=" * 60)
+
+    def get_summary():
+        return df_raw.describe(include='all')
+
+    def get_missing():
+        return df_raw.isnull().sum()
+
+    def get_dtypes():
+        return df_raw.dtypes
+
+    def get_numeric_corr():
+        numeric_df = df_raw.select_dtypes(include=[np.number])
+        return numeric_df.corr() if not numeric_df.empty else pd.DataFrame()
+
+    def get_value_counts(col):
+        return df_raw[col].value_counts()
+
+    t0 = time.time()
+
+    # Run independent profilers in parallel
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        f_summary = executor.submit(get_summary)
+        f_missing = executor.submit(get_missing)
+        f_dtypes = executor.submit(get_dtypes)
+        f_corr = executor.submit(get_numeric_corr)
+
+        results = {
+            'summary': f_summary.result(),
+            'missing': f_missing.result(),
+            'dtypes': f_dtypes.result(),
+            'correlation': f_corr.result()
+        }
+
+    # Run value counts for key columns in parallel
+    key_cols = ['Experience', 'Cat_Breed', 'Current_Brand', 'Age', 'Gender']
+    key_cols = [c for c in key_cols if c in df_raw.columns]
+    if key_cols:
+        with ThreadPoolExecutor(max_workers=len(key_cols)) as executor:
+            value_count_futures = {col: executor.submit(get_value_counts, col) for col in key_cols}
+            results['value_counts'] = {col: f.result() for col, f in value_count_futures.items()}
+    else:
+        results['value_counts'] = {}
+
+    logging.info(f"[Profiling] Completed in {time.time() - t0:.2f}s")
+    logging.info(f"[Profiling] Raw shape: {df_raw.shape}")
+    logging.info(f"[Profiling] Missing values per column:\n{results['missing'].to_string()}")
+
+    return results
+
 
 # ============================================================
 # LOAD CONFIG
@@ -76,9 +159,13 @@ except Exception as e:
     sys.exit(1)
 
 # ============================================================
+# PHASE 1: RUN DATA PROFILING
+# ============================================================
+profile_results = run_data_profiling(df_raw)
+
+# ============================================================
 # RENAME COLUMNS (ชื่อคอลัมน์ภาษาไทยถูก corrupt เป็น ?)
 # ============================================================
-# Convert string keys from JSON to integers
 col_names = {int(k): v for k, v in config['col_names'].items()}
 
 # Option 1-10, each has 5 sub-attributes
@@ -93,23 +180,26 @@ df.columns = [col_names.get(i, f'col_{i}') for i in range(len(df.columns))]
 logging.info(f"Columns renamed: {len(df.columns)} columns")
 
 # ============================================================
-# STEP 1: TARGET VARIABLE IDENTIFICATION
+# STAGE 1: TARGET VARIABLE IDENTIFICATION
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STEP 1: TARGET VARIABLE IDENTIFICATION")
+logging.info("STAGE 1: TARGET VARIABLE IDENTIFICATION")
 logging.info("=" * 60)
+t_stage1 = time.time()
 
 df['Target_Option'] = df['Top3_Choices'].apply(
     lambda x: x.split(',')[0].strip() if pd.notna(x) else np.nan
 )
 logging.info(f"Target_Option created. Distribution:\n{df['Target_Option'].value_counts().to_string()}")
+logging.info(f"[Diagnostic] Stage 1 completed in {time.time() - t_stage1:.2f}s | Rows: {len(df)}")
 
 # ============================================================
-# STEP 2: DATA CLEANING
+# STAGE 2: DATA CLEANING
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STEP 2: DATA CLEANING")
+logging.info("STAGE 2: DATA CLEANING")
 logging.info("=" * 60)
+t_stage2 = time.time()
 
 # 2a. Drop rows that are completely NaN (except Timestamp/Experience)
 important_cols = ['Target_Option', 'Age', 'Gender']
@@ -148,14 +238,15 @@ def standardize_brand(text):
 df_clean['Brand_Std'] = df_clean['Current_Brand'].apply(standardize_brand)
 logging.info(f"Brand categories: {df_clean['Brand_Std'].value_counts().head(10).to_dict()}")
 
-logging.info(f"\nCleaned dataset shape: {df_clean.shape}")
+logging.info(f"[Diagnostic] Stage 2 completed in {time.time() - t_stage2:.2f}s | Cleaned rows: {len(df_clean)}")
 
 # ============================================================
-# STEP 3: FEATURE SELECTION & ENCODING
+# STAGE 3: FEATURE SELECTION & ENCODING
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STEP 3: FEATURE SELECTION & ENCODING")
+logging.info("STAGE 3: FEATURE SELECTION & ENCODING")
 logging.info("=" * 60)
+t_stage3 = time.time()
 
 # 3a. Likert Scale -> Numeric
 def map_likert_5(val):
@@ -220,76 +311,82 @@ marital_dummies = pd.get_dummies(df_clean['Marital_Label'], prefix='Marital')
 df_clean = pd.concat([df_clean, marital_dummies], axis=1)
 logging.info(f"One-Hot encoded Gender & Marital Status")
 
-# 3f. Feature Selection
-logging.info("\n--- Feature Selection: Top 10 features ---")
+logging.info(f"[Diagnostic] Encoding completed in {time.time() - t_stage3:.2f}s")
+
+# ============================================================
+# STAGE 3B: PARALLEL FEATURE SELECTION (ANOVA + RF)
+# ============================================================
+logging.info("\n--- Feature Selection: Running ANOVA and RandomForest in parallel ---")
+t_fselect = time.time()
+
+# Prepare feature columns
 feature_cols = likert5_cols + option_cols + ['Age_Ordinal']
 feature_cols += [c for c in df_clean.columns if c.startswith('Gender_') or c.startswith('Marital_')]
-
-scores = {}
 valid_mask = df_clean['Target_Option'].notna()
-for col in feature_cols:
-    if col not in df_clean.columns:
-        continue
-    col_valid = df_clean.loc[valid_mask, col].notna()
-    if col_valid.sum() < 10:
-        continue
-    groups = []
-    for opt in df_clean.loc[valid_mask, 'Target_Option'].unique():
-        group_data = df_clean.loc[valid_mask & (df_clean['Target_Option'] == opt), col].dropna()
-        if len(group_data) >= 2:
-            groups.append(group_data.values)
-    if len(groups) >= 2:
-        try:
-            f_stat, p_val = f_oneway(*groups)
-            scores[col] = {'F_stat': f_stat, 'p_value': p_val}
-        except:
-            pass
 
-scores_df = pd.DataFrame(scores).T.sort_values('p_value')
-top10 = scores_df.head(10)
-logging.info(f"\n{top10.to_string()}")
+def run_anova_feature_selection():
+    """ANOVA F-test feature selection"""
+    scores = {}
+    for col in feature_cols:
+        if col not in df_clean.columns:
+            continue
+        col_valid = df_clean.loc[valid_mask, col].notna()
+        if col_valid.sum() < 10:
+            continue
+        groups = []
+        for opt in df_clean.loc[valid_mask, 'Target_Option'].unique():
+            group_data = df_clean.loc[valid_mask & (df_clean['Target_Option'] == opt), col].dropna()
+            if len(group_data) >= 2:
+                groups.append(group_data.values)
+        if len(groups) >= 2:
+            try:
+                f_stat, p_val = f_oneway(*groups)
+                scores[col] = {'F_stat': f_stat, 'p_value': p_val}
+            except:
+                pass
+    scores_df = pd.DataFrame(scores).T.sort_values('p_value')
+    return scores_df.head(10)
 
-top10_features = top10.index.tolist()
-logging.info(f"\nTop 10 features: {top10_features}")
-
-# 3g. Random Forest Feature Importance
-logging.info("\n--- Feature Importance (Random Forest) ---")
-try:
-    # เตรียมข้อมูลสำหรับ Random Forest
+def run_random_forest_feature_selection():
+    """Random Forest feature importance selection"""
     rf_data = df_clean.dropna(subset=['Target_Option']).copy()
-    
-    # เลือก Features ที่เป็นตัวเลขแล้ว
     exclude_cols = ['Gender_Label', 'Marital_Label', 'Marital_Status']
     rf_features = likert5_cols + option_cols + ['Age_Ordinal'] + [c for c in df_clean.columns if (c.startswith('Gender_') or c.startswith('Marital_')) and c not in exclude_cols]
     rf_features = [c for c in rf_features if c in rf_data.columns]
-    
-    X = rf_data[rf_features].fillna(0) # เติม 0 แทน NaN เพื่อให้รันได้
-    
+
+    X = rf_data[rf_features].fillna(0)
     le = LabelEncoder()
     y = le.fit_transform(rf_data['Target_Option'])
-    
-    # 1. ใช้ SelectKBest กรอง Feature ก่อน (เลือกมา 20 ตัวที่สัมพันธ์กับ Target ที่สุด)
+
     k_best = min(20, len(rf_features))
     selector = SelectKBest(score_func=chi2, k=k_best)
     X_kbest = selector.fit_transform(X, y)
-    
-    # 2. ดึงชื่อ Feature ที่ผ่านการคัดเลือก
+
     selected_mask = selector.get_support()
     selected_features = [rf_features[i] for i in range(len(rf_features)) if selected_mask[i]]
-    logging.info(f"Filtered {len(rf_features)} features down to {k_best} using SelectKBest(chi2).")
-    
-    # 3. นำ Feature ที่คัดแล้วไปเข้า Random Forest
+
     rf = RandomForestClassifier(n_estimators=100, random_state=42)
     rf.fit(X_kbest, y)
-    
-    rf_scores = pd.DataFrame({'Feature': selected_features, 'Importance': rf.feature_importances_})
-    rf_scores = rf_scores.sort_values('Importance', ascending=False)
-    
-    logging.info(f"\nTop 10 Features (Random Forest):\n{rf_scores.head(10).to_string(index=False)}")
-except Exception as e:
-    logging.warning(f"Failed to calculate Random Forest importance: {e}")
 
-# 3h. Text Mining & Insight Extraction
+    rf_scores = pd.DataFrame({'Feature': selected_features, 'Importance': rf.feature_importances_})
+    return rf_scores.sort_values('Importance', ascending=False)
+
+# Run ANOVA and RandomForest in parallel
+with ThreadPoolExecutor(max_workers=2) as executor:
+    f_anova = executor.submit(run_anova_feature_selection)
+    f_rf = executor.submit(run_random_forest_feature_selection)
+
+    anova_result = f_anova.result()
+    rf_result = f_rf.result()
+
+top10_features = anova_result.index.tolist()
+logging.info(f"\n[ANOVA] Top 10 Features:\n{anova_result.to_string()}")
+logging.info(f"\n[RandomForest] Top 10 Features:\n{rf_result.head(10).to_string(index=False)}")
+logging.info(f"[Diagnostic] Parallel feature selection completed in {time.time() - t_fselect:.2f}s")
+
+# ============================================================
+# STAGE 3C: TEXT MINING & INSIGHT EXTRACTION
+# ============================================================
 logging.info("\n--- Insight Extraction (Text Mining) ---")
 insight_cols = []
 insights_map = config['insights_map']
@@ -304,76 +401,77 @@ for col_name, keywords in insights_map.items():
 logging.info(f"Extracted {len(insight_cols)} insight features from open-ended questions.")
 
 # ============================================================
-# STEP 4: DATA VISUALIZATION
+# STAGE 4: DATA VISUALIZATION (PARALLEL)
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STEP 4: DATA VISUALIZATION")
+logging.info("STAGE 4: DATA VISUALIZATION (Parallel Chart Generation)")
 logging.info("=" * 60)
+t_viz = time.time()
 
 COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
           '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9']
-fig_num = 1
 
-def save_plot(filename):
-    global fig_num
-    try:
-        plt.tight_layout()
-        plt.savefig(filename, dpi=150, bbox_inches='tight')
-        plt.close()
-        logging.info(f"Chart {fig_num} saved: {filename}")
-        fig_num += 1
-    except Exception as e:
-        logging.warning(f"Failed to save chart {filename}: {e}")
-        plt.close()
+# Thread-safe chart generation using Figure directly (not global plt state)
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_agg import FigureCanvasAgg
 
-# 4a. Demographic Profile
-try:
-    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+def generate_chart_demographics():
+    """Chart 1: Demographic Profile"""
+    fig = Figure(figsize=(18, 5))
+    canvas = FigureCanvasAgg(fig)
+    axes = fig.subplots(1, 3)
     fig.suptitle('Demographic Profile of Respondents', fontsize=16, fontweight='bold')
-    
+
     age_counts = df_clean['Age_Ordinal'].value_counts().sort_index()
     age_labels = ['20-29', '30-39', '40-49', '50+']
     axes[0].bar(age_labels[:len(age_counts)], age_counts.values, color=COLORS[:len(age_counts)], edgecolor='white')
     axes[0].set_title('Age Distribution', fontsize=13)
-    
+
     gender_counts = df_clean['Gender_Label'].value_counts()
     axes[1].pie(gender_counts.values, labels=gender_counts.index, autopct='%1.1f%%', colors=COLORS[:len(gender_counts)], startangle=90)
     axes[1].set_title('Gender Distribution', fontsize=13)
-    
+
     marital_counts = df_clean['Marital_Label'].value_counts()
     axes[2].barh(marital_counts.index, marital_counts.values, color=COLORS[:len(marital_counts)], edgecolor='white')
     axes[2].set_title('Marital Status', fontsize=13)
-    
-    save_plot('chart1_demographics.png')
-except Exception as e:
-    logging.warning(f"Error in generating demographic plot: {e}")
 
-# 4b. Target Variable Distribution
-try:
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig.tight_layout()
+    canvas.print_figure('chart1_demographics.png', dpi=150, bbox_inches='tight')
+    fig.clf()
+    logging.info("Chart 1 saved: chart1_demographics.png")
+
+def generate_chart_target():
+    """Chart 2: Target Variable Distribution"""
+    fig = Figure(figsize=(12, 6))
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
     target_counts = df_clean['Target_Option'].value_counts().sort_index()
     ax.bar(target_counts.index, target_counts.values, color=COLORS[:len(target_counts)], edgecolor='white')
     ax.set_title('Distribution of Top 1 Packaging Choice (Target Variable)', fontsize=14, fontweight='bold')
-    save_plot('chart2_target_distribution.png')
-except Exception as e:
-    logging.warning(f"Error in generating target distribution plot: {e}")
+    fig.tight_layout()
+    canvas.print_figure('chart2_target_distribution.png', dpi=150, bbox_inches='tight')
+    fig.clf()
+    logging.info("Chart 2 saved: chart2_target_distribution.png")
 
-# 4c. Correlation Heatmap
-try:
+def generate_chart_correlation():
+    """Chart 3: Correlation Heatmap"""
     heatmap_cols = [c for c in top10_features if c in df_clean.columns][:10]
     if len(heatmap_cols) >= 2:
         corr_data = df_clean[heatmap_cols].dropna()
         if len(corr_data) > 5:
-            fig, ax = plt.subplots(figsize=(12, 8))
+            fig = Figure(figsize=(12, 8))
+            canvas = FigureCanvasAgg(fig)
+            ax = fig.subplots()
             corr_matrix = corr_data.corr()
             sns.heatmap(corr_matrix, annot=True, cmap='RdYlBu_r', center=0, fmt='.2f', ax=ax, linewidths=0.5, square=True)
             ax.set_title('Correlation Heatmap: Top 10 Features', fontsize=14, fontweight='bold')
-            save_plot('chart3_correlation_heatmap.png')
-except Exception as e:
-    logging.warning(f"Error in generating correlation heatmap: {e}")
+            fig.tight_layout()
+            canvas.print_figure('chart3_correlation_heatmap.png', dpi=150, bbox_inches='tight')
+            fig.clf()
+            logging.info("Chart 3 saved: chart3_correlation_heatmap.png")
 
-# 4d. Mean Option Scores
-try:
+def generate_chart_mean_scores():
+    """Chart 4: Mean Option Scores"""
     opt_means = {}
     for opt in range(1, 11):
         opt_cols_i = [c for c in df_clean.columns if c.startswith(f'Opt{opt}_')]
@@ -381,28 +479,34 @@ try:
             opt_means[f'Option {opt}'] = df_clean[opt_cols_i].mean().mean()
 
     if opt_means:
-        fig, ax = plt.subplots(figsize=(12, 6))
+        fig = Figure(figsize=(12, 6))
+        canvas = FigureCanvasAgg(fig)
+        ax = fig.subplots()
         opts = list(opt_means.keys())
         vals = list(opt_means.values())
         ax.bar(opts, vals, color=COLORS[:len(opts)], edgecolor='white')
         ax.set_title('Mean Rating Score by Packaging Option', fontsize=14, fontweight='bold')
-        save_plot('chart4_mean_option_scores.png')
-except Exception as e:
-    logging.warning(f"Error in generating mean scores plot: {e}")
+        fig.tight_layout()
+        canvas.print_figure('chart4_mean_option_scores.png', dpi=150, bbox_inches='tight')
+        fig.clf()
+        logging.info("Chart 4 saved: chart4_mean_option_scores.png")
 
-# 4e. Qualitative Insights Distribution
-try:
+def generate_chart_insights():
+    """Chart 5: Qualitative Insights Distribution"""
     if insight_cols:
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig = Figure(figsize=(10, 6))
+        canvas = FigureCanvasAgg(fig)
+        ax = fig.subplots()
         insight_counts = df_clean[insight_cols].sum().sort_values(ascending=True)
         ax.barh(insight_counts.index, insight_counts.values, color=COLORS[0], edgecolor='white')
         ax.set_title('Top Requested Features & Pain Points (from Text)', fontsize=14, fontweight='bold')
-        save_plot('chart5_insights_distribution.png')
-except Exception as e:
-    logging.warning(f"Error in generating insights distribution plot: {e}")
+        fig.tight_layout()
+        canvas.print_figure('chart5_insights_distribution.png', dpi=150, bbox_inches='tight')
+        fig.clf()
+        logging.info("Chart 5 saved: chart5_insights_distribution.png")
 
-# 4f. Top Insights vs Target Option
-try:
+def generate_chart_insights_vs_option():
+    """Chart 6: Top Insights vs Target Option"""
     if insight_cols:
         top_insights = df_clean[insight_cols].sum().sort_values(ascending=True).tail(5).index.tolist()
         plot_data = pd.DataFrame()
@@ -410,34 +514,63 @@ try:
             counts = df_clean[df_clean[col] == 1].groupby('Target_Option').size()
             plot_data[col] = counts
         plot_data = plot_data.fillna(0)
-        
-        if not plot_data.empty:
-            ax = plot_data.T.plot(kind='bar', stacked=True, figsize=(12, 6), colormap='Set3')
-            ax.set_title('Top 5 Requested Features by Target Packaging Option', fontsize=14, fontweight='bold')
-            plt.xticks(rotation=45, ha='right')
-            save_plot('chart6_insights_vs_option.png')
-except Exception as e:
-    logging.warning(f"Error in generating insights vs option plot: {e}")
 
-# 4g. Random Forest Feature Importance Plot
-try:
-    if 'rf_scores' in locals() and not rf_scores.empty:
-        fig, ax = plt.subplots(figsize=(10, 6))
-        # ใช้ barplot จาก seaborn สำหรับแสดงผล
-        sns.barplot(x='Importance', y='Feature', data=rf_scores.head(10), palette='viridis', ax=ax)
+        if not plot_data.empty:
+            fig = Figure(figsize=(12, 6))
+            canvas = FigureCanvasAgg(fig)
+            ax = fig.subplots()
+            plot_data.T.plot(kind='bar', stacked=True, ax=ax, colormap='Set3')
+            ax.set_title('Top 5 Requested Features by Target Packaging Option', fontsize=14, fontweight='bold')
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha='right')
+            fig.tight_layout()
+            canvas.print_figure('chart6_insights_vs_option.png', dpi=150, bbox_inches='tight')
+            fig.clf()
+            logging.info("Chart 6 saved: chart6_insights_vs_option.png")
+
+def generate_chart_rf_importance():
+    """Chart 7: Random Forest Feature Importance"""
+    if 'rf_result' in dir() and not rf_result.empty:
+        fig = Figure(figsize=(10, 6))
+        canvas = FigureCanvasAgg(fig)
+        ax = fig.subplots()
+        sns.barplot(x='Importance', y='Feature', data=rf_result.head(10), palette='viridis', ax=ax)
         ax.set_title('Top 10 Feature Importance (Random Forest)', fontsize=14, fontweight='bold')
         ax.set_xlabel('Relative Importance')
         ax.set_ylabel('Features')
-        save_plot('chart7_rf_feature_importance.png')
-except Exception as e:
-    logging.warning(f"Error in generating RF importance plot: {e}")
+        fig.tight_layout()
+        canvas.print_figure('chart7_rf_feature_importance.png', dpi=150, bbox_inches='tight')
+        fig.clf()
+        logging.info("Chart 7 saved: chart7_rf_feature_importance.png")
+
+# Define chart generation functions
+chart_generators = [
+    generate_chart_demographics,
+    generate_chart_target,
+    generate_chart_correlation,
+    generate_chart_mean_scores,
+    generate_chart_insights,
+    generate_chart_insights_vs_option,
+    generate_chart_rf_importance,
+]
+
+# Run all charts in parallel
+with ThreadPoolExecutor(max_workers=7) as executor:
+    futures = [executor.submit(gen) for gen in chart_generators]
+    for f in as_completed(futures):
+        try:
+            f.result()
+        except Exception as e:
+            logging.warning(f"Chart generation failed: {e}")
+
+logging.info(f"[Diagnostic] All charts generated in parallel in {time.time() - t_viz:.2f}s")
 
 # ============================================================
-# STEP 5: EXPORT & SUMMARY
+# STAGE 5: EXPORT & SUMMARY
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STEP 5: EXPORT & SUMMARY")
+logging.info("STAGE 5: EXPORT & SUMMARY")
 logging.info("=" * 60)
+t_export = time.time()
 
 # 5a. Export CSV
 try:
@@ -457,14 +590,20 @@ except Exception as e:
 
 # 5b. Summary Text
 try:
-    summary_text = """=== Logic for Target & Feature Selection ===
+    summary_text = f"""=== Logic for Target & Feature Selection ===
 1. Target Variable: Extract 'Top 3 Choices', take 1st choice.
 2. Data Cleaning:
    - Dropped missing rows & 'No Cat Experience' respondents.
    - Standardized breeds and brands from config.
 3. Feature Encoding: Ordinal & One-Hot Encoding.
-4. Feature Selection: ANOVA test for Top 10 features.
+4. Feature Selection: ANOVA test + RandomForest (parallel execution).
 5. Text Mining: Boolean features extracted from config insights.
+
+=== Execution Summary ===
+- Data Profiling: Parallel (4 profilers)
+- Feature Selection: Parallel (ANOVA + RandomForest)
+- Chart Generation: Parallel (7 charts)
+- Total charts generated: 7
 """
     with open('presentation_summary.txt', 'w', encoding='utf-8') as f:
         f.write(summary_text)
@@ -472,4 +611,5 @@ try:
 except Exception as e:
     logging.error(f"Failed to export summary text: {e}")
 
+logging.info(f"[Diagnostic] Export completed in {time.time() - t_export:.2f}s")
 logging.info("\n[OK] Pipeline completed successfully!")

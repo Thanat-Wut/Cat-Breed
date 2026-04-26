@@ -4,5 +4,11 @@
    - Dropped missing rows & 'No Cat Experience' respondents.
    - Standardized breeds and brands from config.
 3. Feature Encoding: Ordinal & One-Hot Encoding.
-4. Feature Selection: ANOVA test for Top 10 features.
+4. Feature Selection: ANOVA test + RandomForest (parallel execution).
 5. Text Mining: Boolean features extracted from config insights.
+
+=== Execution Summary ===
+- Data Profiling: Parallel (4 profilers)
+- Feature Selection: Parallel (ANOVA + RandomForest)
+- Chart Generation: Parallel (7 charts)
+- Total charts generated: 7
