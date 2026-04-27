@@ -221,14 +221,56 @@ Target_Option = "Option 3"
 | น้อย | 2 |
 | น้อยที่สุด | 1 |
 
+**ปัจจัยการตัดสินใจซื้อ 5 ข้อ (Factor):**
+```python
+likert5_cols = [
+    'Factor_Taste',       # รสชาติ
+    'Factor_Brand_Rep',   # ความน่าเชื่อถือของแบรนด์
+    'Factor_Price',       # ราคา
+    'Factor_Ingredients',  # ส่วนประกอบ/สารอาหาร
+    'Factor_Packaging',   # บรรจุภัณฑ์
+]
+```
+
+**ปัจจัยบรรจุภัณฑ์ 8 ข้อ (PkgFactor):**
+```python
+likert5_cols += [
+    'PkgFactor_Taste',      # รสชาติ
+    'PkgFactor_Freshness',  # ความสดใหม่
+    'PkgFactor_Nutrition',  # คุณค่าทางโภชนาการ
+    'PkgFactor_Safety',     # ความปลอดภัย
+    'PkgFactor_Convenience',# ความสะดวกในการใช้
+    'PkgFactor_Promotion',  # โปรโมชัน
+    'PkgFactor_Quality',    # คุณภาพ
+    'PkgFactor_Price',      # ราคา
+]
+```
+
 **Option Rating 4 ระดับ** → ใช้กับ Option 1–10 ทั้ง 5 มิติ **(50 คอลัมน์)**
 
-| ภาษาไทย | ค่าตัวเลข |
-|--------|---------|
-| เห็นด้วยที่สุด / เห็นด้วยอย่างยิ่ง | 4 |
-| เห็นด้วย | 3 |
-| เฉยๆ | 2 |
-| ไม่เห็นด้วย / ไม่เห็นด้วยเลย | 1 |
+```python
+likert_4_map = {
+    'เห็นด้วยที่สุด': 4,
+    'เห็นด้วยอย่างยิ่ง': 4,
+    'เห็นด้วย': 3,
+    'เฉยๆ': 2,
+    'ไม่เห็นด้วย': 1,
+    'ไม่เห็นด้วยเลย': 1
+}
+```
+
+**Option 1–10 × 5 มิติ:**
+```python
+# Option 1–10, each has 5 attributes
+option_attrs = ['Attractiveness', 'Trust', 'Modernity', 'Premium_Feel', 'Purchase_Intent']
+for opt in range(1, 11):
+    for j, attr in enumerate(option_attrs):
+        col_idx = 22 + (opt - 1) * 5 + j
+        col_names[col_idx] = f'Opt{opt}_{attr}'
+
+# ผลลัพธ์: Opt1_Attractiveness, Opt1_Trust, Opt1_Modernity, Opt1_Premium_Feel, Opt1_Purchase_Intent
+#          Opt2_Attractiveness, ... (รวม 50 คอลัมน์)
+```
 
 ### Feature Selection: การเลือกตัวแปรที่มีผลต่อ Target มากที่สุด
 

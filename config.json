@@ -1,96 +1,120 @@
 {
-  // ============================================================
-  // col_names: การแมปหมายเลขคอลัมน์กับชื่อที่อ่านได้
-  // คอลัมน์ภาษาไทยใน CSV ถูก corrupt เป็น ? เลยต้องอ้างอิงจาก index
-  // ============================================================
   "col_names": {
-    "0": "Timestamp",                    // วันที่ตอบแบบสอบถาม
-    "1": "Experience",                   // ประสบการณ์เลี้ยงแมว (เคย/ไม่เคย)
-    "2": "Cat_Meaning",                  // แมวมีความหมายอย่างไรในชีวิต
-    "3": "Cat_Breed",                    // พันธุ์แมวที่เลี้ยง
-    "4": "Current_Brand",                // ยี่ห้ออาหารแมวที่ใช้อยู่ปัจจุบัน
-    "5": "Factor_Taste",                 // ปัจจัย: รสชาติ
-    "6": "Factor_Brand_Rep",             // ปัจจัย: ความน่าเชื่อถือของแบรนด์
-    "7": "Factor_Price",                 // ปัจจัย: ราคา
-    "8": "Factor_Ingredients",           // ปัจจัย: ส่วนประกอบ/สารอาหาร
-    "9": "Factor_Packaging",             // ปัจจัย: บรรจุภัณฑ์
-    "10": "Packaging_Important",         // บรรจุภัณฑ์สำคัญแค่ไหน (Likert 5 ระดับ)
-    "11": "Design_Preference",           // ความชอบในการออกแบบ
-    "12": "PkgFactor_Taste",             // ปัจจัยบรรจุภัณฑ์: รสชาติ
-    "13": "PkgFactor_Freshness",        // ปัจจัยบรรจุภัณฑ์: ความสดใหม่
-    "14": "PkgFactor_Nutrition",         // ปัจจัยบรรจุภัณฑ์: คุณค่าทางโภชนาการ
-    "15": "PkgFactor_Safety",            // ปัจจัยบรรจุภัณฑ์: ความปลอดภัย
-    "16": "PkgFactor_Convenience",       // ปัจจัยบรรจุภัณฑ์: ความสะดวกในการใช้
-    "17": "PkgFactor_Promotion",         // ปัจจัยบรรจุภัณฑ์: โปรโมชัน
-    "18": "PkgFactor_Quality",           // ปัจจัยบรรจุภัณฑ์: คุณภาพ
-    "19": "PkgFactor_Price",             // ปัจจัยบรรจุภัณฑ์: ราคา
-    "20": "Current_Brand_Detail",        // รายละเอียดยี่ห้อปัจจุบัน (ถ้อยคำเปิด)
-    "21": "Packaging_Suggestion",        // ข้อเสนอแนะเรื่องบรรจุภัณฑ์ (ถ้อยคำเปิด)
-    "72": "Top3_Choices",                // ตัวเลือกบรรจุภัณฑ์ที่ชอบอันดับ 1-3 (คั่นด้วย ,)
-    "73": "Age",                         // กลุ่มอายุ
-    "74": "Gender",                      // เพศ
-    "75": "Marital_Status"               // สถานะความสัมพันธ์
+    "0": "Timestamp",
+    "1": "Experience",
+    "2": "Cat_Meaning",
+    "3": "Cat_Breed",
+    "4": "Current_Brand",
+    "5": "Factor_Taste",
+    "6": "Factor_Brand_Rep",
+    "7": "Factor_Price",
+    "8": "Factor_Ingredients",
+    "9": "Factor_Packaging",
+    "10": "Packaging_Important",
+    "11": "Design_Preference",
+    "12": "PkgFactor_Taste",
+    "13": "PkgFactor_Freshness",
+    "14": "PkgFactor_Nutrition",
+    "15": "PkgFactor_Safety",
+    "16": "PkgFactor_Convenience",
+    "17": "PkgFactor_Promotion",
+    "18": "PkgFactor_Quality",
+    "19": "PkgFactor_Price",
+    "20": "Current_Brand_Detail",
+    "21": "Packaging_Suggestion",
+    "72": "Top3_Choices",
+    "73": "Age",
+    "74": "Gender",
+    "75": "Marital_Status"
   },
-
-  // ============================================================
-  // purebred_keywords: คำค้นหาสำหรับจำแนกพันธุ์แมว
-  // ใช้ตรวจสอบว่าคำตอบบ่งบอกว่าเป็นแมวพันธุ์แท้หรือไม่
-  // รวมทั้งชื่อภาษาไทยและภาษาอังกฤษของพันธุ์ต่างๆ
-  // ============================================================
   "purebred_keywords": [
     "british", "persian", "scottish", "munchkin", "ragdoll",
     "siamese", "exotic", "maine", "bengal", "american",
     "sphynx", "himalayan", "abyssinian", "russian",
-    // พันธุ์ภาษาไทย
     "เปอร์เซีย", "สก็อต", "สก๊อต", "สกอต", "บริติช", "บริทิช", "ช็อตแฮร์", "ช้อตแฮร์", "ชอทแฮร์",
     "มัชกิ้น", "แรคดอล", "เมนคูน", "เบงกอล", "อเมริกัน", "เอ็กโซติก",
     "วิเชียรมาศ", "หิมาลายัน", "หิมารยัน", "ขาวมณี", "โกนจา", "ศุภลักษณ์", "สีสวาด", "โคราช"
   ],
-
-  // ============================================================
-  // brand_map: การแมปชื่อยี่ห้ออาหารแมวที่เขียนหลากหลายให้เป็นมาตรฐาน
-  // คำค้น (key) → ชื่อมาตรฐาน (value)
-  // รวมคำผิด คำย่อ และชื่อภาษาไทยที่ถูก corrupt
-  // ============================================================
   "brand_map": {
-    "royal canin": "Royal Canin", "royalcanin": "Royal Canin", "รอยัลคานิน": "Royal Canin",
-    "whiskas": "Whiskas", "whiska": "Whiskas", "วิสกัส": "Whiskas", "วิสกัต": "Whiskas", "วิสคัส": "Whiskas",
-    "me-o": "Me-O", "meo": "Me-O", "มีโอ": "Me-O",
-    "projen": "Projen", "โปรเจน": "Projen",
-    "king cat": "King Cat", "kingcat": "King Cat", "kingkat": "King Cat", "king cot": "King Cat", "คิงแคท": "King Cat", "คิงส์แคท": "King Cat", "คิงงแคท": "King Cat", "คิง แคท": "King Cat",
-    "you-o": "You-O", "you o": "You-O", "youo": "You-O", "ยูโอ": "You-O",
-    "sheba": "Sheba", "ชีบา": "Sheba",
-    "catival": "Kativa/Kaniva", "katival": "Kativa/Kaniva", "kativa": "Kativa/Kaniva", "cativa": "Kativa/Kaniva", "kaniva": "Kativa/Kaniva", "แคทิวา": "Kativa/Kaniva", "แคทิว่า": "Kativa/Kaniva",
-    "pramy": "Pramy", "พรามี่": "Pramy",
-    "wills": "Wills", "will": "Wills", "วิล": "Wills",
-    "smarth": "SmartHeart", "smart heart": "SmartHeart", "สมาร์ทฮาร์ท": "SmartHeart", "smartbrain": "SmartHeart",
-    "purina": "Purina", "purino": "Purina", "friskies": "Purina", "purena": "Purina", "พูริโน่": "Purina", "ภูริโน": "Purina", "เพียวริน่า": "Purina", "ฟริสกี้": "Purina",
-    "hills": "Hill's", "hill's": "Hill's", "ฮิลส์": "Hill's",
-    "buzz": "Buzz", "บัซ": "Buzz",
-    "solid gold": "Solid Gold", "โซลิดโกลด์": "Solid Gold",
+    "royal canin": "Royal Canin",
+    "royalcanin": "Royal Canin",
+    "รอยัลคานิน": "Royal Canin",
+    "whiskas": "Whiskas",
+    "whiska": "Whiskas",
+    "วิสกัส": "Whiskas",
+    "วิสกัต": "Whiskas",
+    "วิสคัส": "Whiskas",
+    "me-o": "Me-O",
+    "meo": "Me-O",
+    "มีโอ": "Me-O",
+    "projen": "Projen",
+    "โปรเจน": "Projen",
+    "king cat": "King Cat",
+    "kingcat": "King Cat",
+    "kingkat": "King Cat",
+    "king cot": "King Cat",
+    "คิงแคท": "King Cat",
+    "คิงส์แคท": "King Cat",
+    "คิงงแคท": "King Cat",
+    "คิง แคท": "King Cat",
+    "you-o": "You-O",
+    "you o": "You-O",
+    "youo": "You-O",
+    "ยูโอ": "You-O",
+    "sheba": "Sheba",
+    "ชีบา": "Sheba",
+    "catival": "Kativa/Kaniva",
+    "katival": "Kativa/Kaniva",
+    "kativa": "Kativa/Kaniva",
+    "cativa": "Kativa/Kaniva",
+    "kaniva": "Kativa/Kaniva",
+    "แคทิวา": "Kativa/Kaniva",
+    "แคทิว่า": "Kativa/Kaniva",
+    "pramy": "Pramy",
+    "พรามี่": "Pramy",
+    "wills": "Wills",
+    "will": "Wills",
+    "วิล": "Wills",
+    "smarth": "SmartHeart",
+    "smart heart": "SmartHeart",
+    "สมาร์ทฮาร์ท": "SmartHeart",
+    "smartbrain": "SmartHeart",
+    "purina": "Purina",
+    "purino": "Purina",
+    "friskies": "Purina",
+    "purena": "Purina",
+    "พูริโน่": "Purina",
+    "ภูริโน": "Purina",
+    "เพียวริน่า": "Purina",
+    "ฟริสกี้": "Purina",
+    "hills": "Hill's",
+    "hill's": "Hill's",
+    "ฮิลส์": "Hill's",
+    "buzz": "Buzz",
+    "บัซ": "Buzz",
+    "solid gold": "Solid Gold",
+    "โซลิดโกลด์": "Solid Gold",
     "taste of the wild": "Taste of the Wild",
-    "petheria": "Petheria", "pateria": "Petheria",
-    "perfecta": "Perfecta", "เพอร์เฟคต้า": "Perfecta",
-    "maxima": "Maxima", "แม็กซิม่า": "Maxima",
-    "hero cat": "Hero Cat", "ฮีโร่แคท": "Hero Cat",
-    "oliver": "Oliver", "โอลิเวอร์": "Oliver"
+    "petheria": "Petheria",
+    "pateria": "Petheria",
+    "perfecta": "Perfecta",
+    "เพอร์เฟคต้า": "Perfecta",
+    "maxima": "Maxima",
+    "แม็กซิม่า": "Maxima",
+    "hero cat": "Hero Cat",
+    "ฮีโร่แคท": "Hero Cat",
+    "oliver": "Oliver",
+    "โอลิเวอร์": "Oliver"
   },
-
-  // ============================================================
-  // insights_map: คำค้นสำหรับทำ Text Mining จากคำตอบเปิด
-  // แต่ละ key คือธีมที่สนใจ, value คือคำที่เกี่ยวข้อง
-  // ถ้าคำตอบเปิด (Packaging_Suggestion, Current_Brand_Detail)
-  // มีคำเหล่านี้ → ถือว่าผู้ตอบสนใจเรื่องนั้น
-  // ============================================================
   "insights_map": {
-    "Need_Clear_Window": ["ใส", "มองเห็น", "ทะลุ"],         // ต้องการบรรจุภัณฑ์มีหน้าต่างใส
-    "Need_Pour_Lid": ["ฝา", "ขวด", "เท"],                  // ต้องการฝาเทได้/ฝาแบบขวด
-    "Need_Small_Packs": ["แบ่ง", "ถุงเล็ก", "ห่อย่อย", "ซองย่อย", "เล็กๆ"],  // ต้องการขนาดเล็กแบ่งได้
-    "Need_Sodium_Info": ["โซเดียม", "เค็ม", "ไต"],          // ต้องการข้อมูลโซเดียม/สารอาหาร
-    "Need_Big_Text": ["ตัวใหญ่", "ชัดเจน", "อ่านง่าย"],    // ต้องการตัวอักษรใหญ่ชัดเจน
-    "Design_Matte": ["ด้าน", "เนื้อด้าน"],                  // ชอบผิวด้าน/ไม่เงางาม
-    "Design_Cartoon": ["การ์ตูน", "วาด", "ตาโต"],          // ชอบลายการ์ตูน/วาด
-    "Need_Topping": ["ท็อปปิ้ง", "เนื้อจริง", "ฟรีซดราย", "ผสมเนื้อ"],  // ต้องการท็อปปิ้ง/เนื้อจริง
-    "Need_Interactive": ["ของแถม", "กล่องสุ่ม", "ดม", "ลับเล็บ", "เล่น"]  // ต้องการของแถม/กิจกรรมโต้ตอบ
+    "Need_Clear_Window": ["ใส", "มองเห็น", "ทะลุ"],
+    "Need_Pour_Lid": ["ฝา", "ขวด", "เท"],
+    "Need_Small_Packs": ["แบ่ง", "ถุงเล็ก", "ห่อย่อย", "ซองย่อย", "เล็กๆ"],
+    "Need_Sodium_Info": ["โซเดียม", "เค็ม", "ไต"],
+    "Need_Big_Text": ["ตัวใหญ่", "ชัดเจน", "อ่านง่าย"],
+    "Design_Matte": ["ด้าน", "เนื้อด้าน"],
+    "Design_Cartoon": ["การ์ตูน", "วาด", "ตาโต"],
+    "Need_Topping": ["ท็อปปิ้ง", "เนื้อจริง", "ฟรีซดราย", "ผสมเนื้อ"],
+    "Need_Interactive": ["ของแถม", "กล่องสุ่ม", "ดม", "ลับเล็บ", "เล่น"]
   }
 }
