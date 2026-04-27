@@ -33,14 +33,14 @@
 ### ขั้นตอนการทำงาน (Pipeline Overview)
 
 ```
-ชุดข้อมูลจริง (169 rows) → Pipeline อ่าน CSV ด้วย header=1
-    │ (830 แถวว่างที่อยู่หลังแถว 169 ไม่ใช่ส่วนหนึ่งของข้อมูลจริง)
+ชุดข้อมูลจริง (167 rows) → Pipeline อ่าน CSV ด้วย header=1
+    │ (834 แถวว่างที่อยู่หลังแถว 167 ไม่ใช่ส่วนหนึ่งของข้อมูลจริง)
     ▼
 Step 1: Target Variable Identification
     │ → เลือก Target จาก "Top 3 Choices"
     ▼
 Step 2: Data Cleaning
-    │ → dropna(subset=[Target_Option, Age, Gender]) → ลบ 21 แถวที่ข้อมูลไม่สมบูรณ์
+    │ → dropna(subset=[Target_Option, Age, Gender]) → ลบ 19 แถวที่ข้อมูลไม่สมบูรณ์
     │ → Experience filter (เคย/ไม่เคย — ผู้ที่ไม่เคยเลี้ยงแมวไม่ได้ตอบ)
     │ → Breed grouping → Purebred / Mixed-Stray (จาก config.json purebred_keywords)
     │ → Brand standardization → canonical brand names (จาก config.json brand_map)
@@ -51,8 +51,8 @@ Step 3: Feature Selection & Engineering
     │ → Ordinal Encode Age  (1-4)
     │ → One-Hot Encode Gender + Marital Status
     │ → Text Mining → 9 Boolean insight features (จาก config.json insights_map)
-    │ → SelectKBest(chi2, k=20) → กรอง 71 features เหลือ 20
-    │ → Random Forest Feature Importance
+    │ → ANOVA F-test → คัด Top 10 Features ที่มี p-value ต่ำสุด
+    │ → Random Forest Feature Importance → วัดอิทธิพลบน 70 features ทั้งหมด
     ▼
 Step 4: Data Visualization
     │ → chart1: Demographics (age, gender, marital)
@@ -61,16 +61,15 @@ Step 4: Data Visualization
     │ → chart4: Mean Option Scores (1–10, 5 attributes)
     │ → chart5: Insights Distribution (9 boolean features)
     │ → chart6: Insights vs Target Option
-    │ → chart7: Random Forest Feature Importance (Top 10)
     ▼
-Cleaned CSV (148 rows, 89 columns) + 7 PNG charts + presentation
+Cleaned CSV (148 rows, 89 columns) + 6 PNG charts + presentation
 ```
 
 ### Dataset Summary
 
 | Metric | Value |
 |--------|-------|
-| ข้อมูลจริงในไฟล์ CSV | 169 rows |
+| ข้อมูลจริงในไฟล์ CSV | 167 rows |
 | หลัง dropna (key cols NaN) | 148 rows |
 | Features (original) | 76 columns |
 | Features (after encoding + export) | 89 columns |
@@ -130,15 +129,15 @@ Target_Option = "Option 3"
 
 ### การจัดการแบบสอบถามที่ตอบไม่ครบ (Handle Incomplete Responses)
 
-ในชุดข้อมูลจริง 169 rows มีแถวที่มีค่า NaN ในคอลัมน์สำคัญ ได้แก่ `Target_Option`, `Age`, `Gender`
+ในชุดข้อมูลจริง 167 rows มีแถวที่มีค่า NaN ในคอลัมน์สำคัญ ได้แก่ `Target_Option`, `Age`, `Gender`
 
 | ขั้นตอน | จำนวนแถว |
 |--------|---------|
-| ข้อมูลจริงในไฟล์ CSV | 169 |
-| ลบแถว NaN ใน key columns | -21 |
+| ข้อมูลจริงในไฟล์ CSV | 167 |
+| ลบแถว NaN ใน key columns | -19 |
 | **Clean Data** | **148** |
 
-> **21 แถว** ถูกลบออกเนื่องจากข้อมูลไม่สมบูรณ์ โดยทุกแถวที่ถูกลบเป็นผู้ที่ระบุว่า **"ไม่เคย"** เลี้ยงแมว (เลยไม่ได้ตอบคำถามส่วนที่เหลือ)
+> **19 แถว** ถูกลบออกเนื่องจากข้อมูลไม่สมบูรณ์ โดยทุกแถวที่ถูกลบเป็นผู้ที่ระบุว่า **"ไม่เคย"** เลี้ยงแมว (เลยไม่ได้ตอบคำถามส่วนที่เหลือ)
 
 ### การตรวจสอบความสมเหตุสมผล (Logic Check)
 
@@ -254,34 +253,26 @@ Target_Option = "Option 3"
 | 9 | Opt3_Trust | 4.49 | 3.45e-04 |
 | 10 | Opt1_Trust | 3.86 | 1.34e-03 |
 
-> **Insight:** **Opt1 ครอบงำ** — 7 ใน 10 อันดับแรกเป็น attributes ของ Option 1 แสดงว่า Opt1 มี differentiation ชัดเจนที่สุดในทุกมิติ ส่วน Option 2 และ 3 มีบทบาทรอง
-
 ### Random Forest Feature Importance
 
-หลังจาก ANOVA คัด Top 10 แล้ว pipeline ยังใช้ **Random Forest** เพื่อวัด Feature Importance อีกชั้น:
-
-**ขั้นตอน:**
-1. รวม Likert (13) + Option Ratings (50) + Age_Ordinal + Gender/Marital dummies = **71 features**
-2. ใช้ **SelectKBest(chi2, k=20)** กรองเหลือ 20 features ที่สัมพันธ์กับ Target มากที่สุด
-3. เทรน **RandomForestClassifier(n_estimators=100)** บน 20 features ที่คัดแล้ว
-4. ดึง Feature Importance ออกมาเรียงลำดับ
+หลังจาก ANOVA คัด Top 10 แล้ว pipeline ยังใช้ **Random Forest** เพื่อวัด Feature Importance อีกชั้นบน **70 features ทั้งหมด** (Likert 13 + Option 50 + Age + Gender dummies 3 + Marital dummies 4):
 
 **Top 10 Feature Importance (Random Forest):**
 
 | Rank | Feature | Importance |
 |------|---------|------------|
-| 1 🏆 | **Factor_Ingredients** | 0.0844 |
-| 2 | Opt1_Purchase_Intent | 0.0791 |
-| 3 | Opt1_Premium_Feel | 0.0718 |
-| 4 | Opt6_Attractiveness | 0.0681 |
-| 5 | Opt7_Purchase_Intent | 0.0649 |
-| 6 | Opt1_Attractiveness | 0.0639 |
-| 7 | **Age_Ordinal** | 0.0573 |
-| 8 | Opt3_Purchase_Intent | 0.0568 |
-| 9 | Opt2_Trust | 0.0542 |
-| 10 | Opt2_Attractiveness | 0.0528 |
+| 1 🏆 | **Factor_Ingredients** | 0.0763 |
+| 2 | **Age_Ordinal** | 0.0760 |
+| 3 | PkgFactor_Convenience | 0.0680 |
+| 4 | PkgFactor_Promotion | 0.0640 |
+| 5 | PkgFactor_Freshness | 0.0629 |
+| 6 | Factor_Brand_Rep | 0.0597 |
+| 7 | Factor_Price | 0.0584 |
+| 8 | Factor_Taste | 0.0572 |
+| 9 | PkgFactor_Price | 0.0565 |
+| 10 | Factor_Packaging | 0.0543 |
 
-> **Insight:** **Factor_Ingredients** ติดอันดับ 1 ใน RF — ไม่ใช่ Option rating แสดงว่าปัจจัยเรื่อง **ส่วนผสม/วัตถุดิบ** มีอิทธิพลทำนายการเลือกบรรจุภัณฑ์ได้ดีที่สุด และ **Age_Ordinal** ติดอันดับ 7 แสดงว่าอายุส่งผลต่อการเลือกด้วย
+> **Insight:** **Factor_Ingredients และ Age_Ordinal** มีอิทธิพลทำนายการเลือกบรรจุภัณฑ์ได้ดีที่สุด — ไม่ใช่ Option Rating แสดงว่าปัจจัยเรื่อง **ส่วนผสม/วัตถุดิบ** และ **อายุ** มีอิทธิพลมากกว่าการประเมินรูปลักษณ์บรรจุภัณฑ์
 
 ---
 
@@ -403,12 +394,12 @@ Target_Option = "Option 3"
 
 | ด้าน | สถานะ |
 |------|-------|
-| Missing Values | ✅ dropna → ลบ 21 แถวจาก 169 ที่มีข้อมูล |
+| Missing Values | ✅ dropna → ลบ 19 แถวจาก 167 ที่มีข้อมูล |
 | Incomplete Responses | ✅ กรองเฉพาะผู้มีประสบการณ์เลี้ยงแมว (Experience=เคย) |
 | Open-ended Standardization | ✅ Breeds และ Brands จาก config.json |
 | Encoding Consistency | ✅ Likert→1-5, Ordinal→1-4, One-Hot ถูกต้อง |
-| Feature Selection | ✅ ANOVA Top 10 + SelectKBest(chi2,k=20) → RF Top 10 |
-| Charts | ✅ 7 charts (เพิ่ม chart7_rf_feature_importance) |
+| Feature Selection | ✅ ANOVA F-test → Top 10 + RF Feature Importance |
+| Charts | ✅ 7 charts |
 | Ready for ML | ✅ Cleaned CSV (148 rows, 89 cols) พร้อมใช้งาน |
 
 ### Business Insights สำหรับแบรนด์ต่างประเทศ
@@ -416,8 +407,8 @@ Target_Option = "Option 3"
 **1. เน้นอัตลักษณ์ Option 1 (ประสบการณ์ที่แตกต่างชัดเจน)**
 → ANOVA พบว่า Opt1 มีความแตกต่างจาก Option อื่นๆ มากที่สุด (7 ใน 10 อันดับแรก) — บรรจุภัณฑ์ที่ดีต้องมี **ความน่าดึงดูด ความน่าเชื่อถือ และความทันสมัย** พร้อมกัน
 
-**2. ปัจจัยส่วนผสมสำคัญที่สุด (Factor_Ingredients)**
-→ Random Forest พบว่า **ส่วนผสม/วัตถุดิบ** มีอิทธิพลทำนายการเลือกมากที่สุด (Importance #1) — แบรนด์ควรเน้นคุณภาพวัตถุดิบในการสื่อสาร
+**2. ปัจจัยส่วนผสมสำคัญที่สำรวจพบ (Factor_Ingredients)**
+→ ANOVA พบว่า **ส่วนผสม/วัตถุดิบ** เป็นปัจจัยที่ผู้บริโภคให้ความสำคัญ (Likert 5-level) — แบรนด์ควรเน้นคุณภาพวัตถุดิบในการสื่อสาร
 
 **3. กลุ่มเป้าหมายหลัก: อายุ 30–39 ปี และเพศหญิง**
 → กลุ่มอายุ 30–39 ปี คิดเป็น 41.9% และเพศหญิง 73% — ควรออกแบบการตลาดที่ดึงดูดกลุ่มนี้โดยเฉพาะ
