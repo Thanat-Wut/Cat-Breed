@@ -4,10 +4,12 @@ AIE323 - Data Preparation Pipeline
 โปรเจกต์วิเคราะห์ข้อมูลแบบสอบถาม (Survey Data)
 เรื่องการออกแบบบรรจุภัณฑ์อาหารแมวสำหรับแบรนด์ต่างประเทศที่ต้องการบุกตลาดไทย
 
-Hybrid Chain & Parallel Execution:
-- Phase 1: Data Profiling (parallel)
-- Phase 2: Pipeline Stages (chain with internal parallel)
-- Phase 3: Live Diagnostics (after each stage)
+Sequential Pipeline:
+- Stage 1: Target Variable Identification
+- Stage 2: Data Cleaning
+- Stage 3: Feature Selection & Encoding
+- Stage 4: Data Visualization (6 charts, sequential)
+- Stage 5: Export & Summary
 """
 
 import pandas as pd
@@ -19,11 +21,7 @@ matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import chi2_contingency, f_oneway
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
-from sklearn.feature_selection import SelectKBest, chi2
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from scipy.stats import f_oneway
 import warnings
 import json
 import logging
@@ -54,85 +52,6 @@ except:
 plt.rcParams['axes.unicode_minus'] = False
 
 # ============================================================
-# PIPELINE STAGE BASE CLASS
-# ============================================================
-class PipelineStage:
-    """Base class for pipeline stages with chain dependencies"""
-    name: str = "BaseStage"
-
-    def __init__(self):
-        self.start_time = None
-        self.end_time = None
-
-    def execute(self, context: dict) -> dict:
-        """Execute the stage. Override in subclass."""
-        raise NotImplementedError
-
-    def diagnose(self, context: dict, result: dict) -> str:
-        """Return diagnostic string after execution"""
-        duration = self.end_time - self.start_time if self.end_time and self.start_time else 0
-        return f"{self.name}: completed in {duration:.2f}s"
-
-
-# ============================================================
-# PHASE 1: DATA PROFILING (PARALLEL)
-# ============================================================
-def run_data_profiling(df_raw: pd.DataFrame) -> dict:
-    """Run statistical profiling in parallel using ThreadPoolExecutor"""
-    logging.info("=" * 60)
-    logging.info("PHASE 1: DATA PROFILING (Parallel)")
-    logging.info("=" * 60)
-
-    def get_summary():
-        return df_raw.describe(include='all')
-
-    def get_missing():
-        return df_raw.isnull().sum()
-
-    def get_dtypes():
-        return df_raw.dtypes
-
-    def get_numeric_corr():
-        numeric_df = df_raw.select_dtypes(include=[np.number])
-        return numeric_df.corr() if not numeric_df.empty else pd.DataFrame()
-
-    def get_value_counts(col):
-        return df_raw[col].value_counts()
-
-    t0 = time.time()
-
-    # Run independent profilers in parallel
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        f_summary = executor.submit(get_summary)
-        f_missing = executor.submit(get_missing)
-        f_dtypes = executor.submit(get_dtypes)
-        f_corr = executor.submit(get_numeric_corr)
-
-        results = {
-            'summary': f_summary.result(),
-            'missing': f_missing.result(),
-            'dtypes': f_dtypes.result(),
-            'correlation': f_corr.result()
-        }
-
-    # Run value counts for key columns in parallel
-    key_cols = ['Experience', 'Cat_Breed', 'Current_Brand', 'Age', 'Gender']
-    key_cols = [c for c in key_cols if c in df_raw.columns]
-    if key_cols:
-        with ThreadPoolExecutor(max_workers=len(key_cols)) as executor:
-            value_count_futures = {col: executor.submit(get_value_counts, col) for col in key_cols}
-            results['value_counts'] = {col: f.result() for col, f in value_count_futures.items()}
-    else:
-        results['value_counts'] = {}
-
-    logging.info(f"[Profiling] Completed in {time.time() - t0:.2f}s")
-    logging.info(f"[Profiling] Raw shape: {df_raw.shape}")
-    logging.info(f"[Profiling] Missing values per column:\n{results['missing'].to_string()}")
-
-    return results
-
-
-# ============================================================
 # LOAD CONFIG
 # ============================================================
 try:
@@ -157,11 +76,6 @@ try:
 except Exception as e:
     logging.error(f"Failed to load data: {e}")
     sys.exit(1)
-
-# ============================================================
-# PHASE 1: RUN DATA PROFILING
-# ============================================================
-profile_results = run_data_profiling(df_raw)
 
 # ============================================================
 # RENAME COLUMNS (ชื่อคอลัมน์ภาษาไทยถูก corrupt เป็น ?)
@@ -314,9 +228,9 @@ logging.info(f"One-Hot encoded Gender & Marital Status")
 logging.info(f"[Diagnostic] Encoding completed in {time.time() - t_stage3:.2f}s")
 
 # ============================================================
-# STAGE 3B: PARALLEL FEATURE SELECTION (ANOVA + RF)
+# STAGE 3B: ANOVA FEATURE SELECTION
 # ============================================================
-logging.info("\n--- Feature Selection: Running ANOVA and RandomForest in parallel ---")
+logging.info("\n--- Feature Selection: Running ANOVA ---")
 t_fselect = time.time()
 
 # Prepare feature columns
@@ -324,7 +238,7 @@ feature_cols = likert5_cols + option_cols + ['Age_Ordinal']
 feature_cols += [c for c in df_clean.columns if c.startswith('Gender_') or c.startswith('Marital_')]
 valid_mask = df_clean['Target_Option'].notna()
 
-def run_anova_feature_selection():
+def run_feature_selection():
     """ANOVA F-test feature selection"""
     scores = {}
     for col in feature_cols:
@@ -347,42 +261,11 @@ def run_anova_feature_selection():
     scores_df = pd.DataFrame(scores).T.sort_values('p_value')
     return scores_df.head(10)
 
-def run_random_forest_feature_selection():
-    """Random Forest feature importance selection"""
-    rf_data = df_clean.dropna(subset=['Target_Option']).copy()
-    exclude_cols = ['Gender_Label', 'Marital_Label', 'Marital_Status']
-    rf_features = likert5_cols + option_cols + ['Age_Ordinal'] + [c for c in df_clean.columns if (c.startswith('Gender_') or c.startswith('Marital_')) and c not in exclude_cols]
-    rf_features = [c for c in rf_features if c in rf_data.columns]
-
-    X = rf_data[rf_features].fillna(0)
-    le = LabelEncoder()
-    y = le.fit_transform(rf_data['Target_Option'])
-
-    k_best = min(20, len(rf_features))
-    selector = SelectKBest(score_func=chi2, k=k_best)
-    X_kbest = selector.fit_transform(X, y)
-
-    selected_mask = selector.get_support()
-    selected_features = [rf_features[i] for i in range(len(rf_features)) if selected_mask[i]]
-
-    rf = RandomForestClassifier(n_estimators=100, random_state=42)
-    rf.fit(X_kbest, y)
-
-    rf_scores = pd.DataFrame({'Feature': selected_features, 'Importance': rf.feature_importances_})
-    return rf_scores.sort_values('Importance', ascending=False)
-
-# Run ANOVA and RandomForest in parallel
-with ThreadPoolExecutor(max_workers=2) as executor:
-    f_anova = executor.submit(run_anova_feature_selection)
-    f_rf = executor.submit(run_random_forest_feature_selection)
-
-    anova_result = f_anova.result()
-    rf_result = f_rf.result()
+anova_result = run_feature_selection()
 
 top10_features = anova_result.index.tolist()
 logging.info(f"\n[ANOVA] Top 10 Features:\n{anova_result.to_string()}")
-logging.info(f"\n[RandomForest] Top 10 Features:\n{rf_result.head(10).to_string(index=False)}")
-logging.info(f"[Diagnostic] Parallel feature selection completed in {time.time() - t_fselect:.2f}s")
+logging.info(f"[Diagnostic] Feature selection completed in {time.time() - t_fselect:.2f}s")
 
 # ============================================================
 # STAGE 3C: TEXT MINING & INSIGHT EXTRACTION
@@ -404,14 +287,13 @@ logging.info(f"Extracted {len(insight_cols)} insight features from open-ended qu
 # STAGE 4: DATA VISUALIZATION (PARALLEL)
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STAGE 4: DATA VISUALIZATION (Parallel Chart Generation)")
+logging.info("STAGE 4: DATA VISUALIZATION")
 logging.info("=" * 60)
 t_viz = time.time()
 
 COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
           '#DDA0DD', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E9']
 
-# Thread-safe chart generation using Figure directly (not global plt state)
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
@@ -527,21 +409,6 @@ def generate_chart_insights_vs_option():
             fig.clf()
             logging.info("Chart 6 saved: chart6_insights_vs_option.png")
 
-def generate_chart_rf_importance():
-    """Chart 7: Random Forest Feature Importance"""
-    if 'rf_result' in dir() and not rf_result.empty:
-        fig = Figure(figsize=(10, 6))
-        canvas = FigureCanvasAgg(fig)
-        ax = fig.subplots()
-        sns.barplot(x='Importance', y='Feature', data=rf_result.head(10), palette='viridis', ax=ax)
-        ax.set_title('Top 10 Feature Importance (Random Forest)', fontsize=14, fontweight='bold')
-        ax.set_xlabel('Relative Importance')
-        ax.set_ylabel('Features')
-        fig.tight_layout()
-        canvas.print_figure('chart7_rf_feature_importance.png', dpi=150, bbox_inches='tight')
-        fig.clf()
-        logging.info("Chart 7 saved: chart7_rf_feature_importance.png")
-
 # Define chart generation functions
 chart_generators = [
     generate_chart_demographics,
@@ -550,19 +417,13 @@ chart_generators = [
     generate_chart_mean_scores,
     generate_chart_insights,
     generate_chart_insights_vs_option,
-    generate_chart_rf_importance,
 ]
 
-# Run all charts in parallel
-with ThreadPoolExecutor(max_workers=7) as executor:
-    futures = [executor.submit(gen) for gen in chart_generators]
-    for f in as_completed(futures):
-        try:
-            f.result()
-        except Exception as e:
-            logging.warning(f"Chart generation failed: {e}")
+# Run all charts sequentially
+for gen in chart_generators:
+    gen()
 
-logging.info(f"[Diagnostic] All charts generated in parallel in {time.time() - t_viz:.2f}s")
+logging.info(f"[Diagnostic] All charts generated in {time.time() - t_viz:.2f}s")
 
 # ============================================================
 # STAGE 5: EXPORT & SUMMARY
@@ -596,14 +457,13 @@ try:
    - Dropped missing rows & 'No Cat Experience' respondents.
    - Standardized breeds and brands from config.
 3. Feature Encoding: Ordinal & One-Hot Encoding.
-4. Feature Selection: ANOVA test + RandomForest (parallel execution).
+4. Feature Selection: ANOVA F-test.
 5. Text Mining: Boolean features extracted from config insights.
 
 === Execution Summary ===
-- Data Profiling: Parallel (4 profilers)
-- Feature Selection: Parallel (ANOVA + RandomForest)
-- Chart Generation: Parallel (7 charts)
-- Total charts generated: 7
+- Data Profiling: Removed (no separate profiling stage)
+- Feature Selection: ANOVA F-test only
+- Chart Generation: Sequential (6 charts)
 """
     with open('presentation_summary.txt', 'w', encoding='utf-8') as f:
         f.write(summary_text)
