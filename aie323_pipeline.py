@@ -71,7 +71,7 @@ logging.info("=" * 60)
 
 CSV_FILE = 'BU Data from Survey Cases_final(5).csv'
 try:
-    df_raw = pd.read_csv(CSV_FILE, encoding='utf-8-sig', header=1)
+    df_raw = pd.read_csv(CSV_FILE, encoding='utf-8-sig', header=1, nrows=165)
     logging.info(f"Raw shape: {df_raw.shape}")
 except Exception as e:
     logging.error(f"Failed to load data: {e}")
