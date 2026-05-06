@@ -21,14 +21,26 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import chi2_contingency, f_oneway
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.base import clone
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.metrics import (
+    classification_report,
+    precision_recall_curve,
+    average_precision_score,
+    balanced_accuracy_score,
+    f1_score,
+    accuracy_score,
+)
 from sklearn.preprocessing import LabelEncoder
 from sklearn.feature_selection import SelectKBest, chi2
+from sklearn.utils import resample
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
 import json
 import logging
 import sys
 import time
+from collections import Counter
 
 warnings.filterwarnings('ignore')
 
@@ -72,6 +84,198 @@ class PipelineStage:
         """Return diagnostic string after execution"""
         duration = self.end_time - self.start_time if self.end_time and self.start_time else 0
         return f"{self.name}: completed in {duration:.2f}s"
+
+
+def _safe_classification_report(y_true, y_pred, labels=None, target_names=None):
+    """Return a dict report with zero_division protection."""
+    return classification_report(
+        y_true,
+        y_pred,
+        labels=labels,
+        target_names=target_names,
+        output_dict=True,
+        zero_division=0,
+    )
+
+
+def _flatten_classification_report(report_dict, target_name, model_name, step_name, threshold=None):
+    """Flatten sklearn classification_report output into CSV-friendly rows."""
+    rows = []
+    for label, metrics in report_dict.items():
+        if isinstance(metrics, dict):
+            rows.append({
+                'Target': target_name,
+                'Model': model_name,
+                'Step': step_name,
+                'Label': label,
+                'Threshold': threshold,
+                'Precision': metrics.get('precision'),
+                'Recall': metrics.get('recall'),
+                'F1': metrics.get('f1-score'),
+                'Support': metrics.get('support'),
+            })
+    return rows
+
+
+def _random_oversample(X_train, y_train, random_state=42):
+    """Simple train-fold oversampling fallback when imblearn is unavailable."""
+    X_train = pd.DataFrame(X_train).copy()
+    y_train = pd.Series(y_train).reset_index(drop=True)
+    X_train = X_train.reset_index(drop=True)
+    counts = y_train.value_counts()
+    if len(counts) < 2:
+        return X_train, y_train
+    majority_class = counts.idxmax()
+    minority_class = counts.idxmin()
+    n_to_add = counts.max() - counts.min()
+    if n_to_add <= 0:
+        return X_train, y_train
+
+    minority_idx = y_train[y_train == minority_class].index
+    sampled_idx = resample(
+        minority_idx,
+        replace=True,
+        n_samples=n_to_add,
+        random_state=random_state,
+    )
+    X_extra = X_train.loc[sampled_idx].reset_index(drop=True)
+    y_extra = y_train.loc[sampled_idx].reset_index(drop=True)
+    X_bal = pd.concat([X_train, X_extra], ignore_index=True)
+    y_bal = pd.concat([y_train, y_extra], ignore_index=True)
+    return X_bal, y_bal
+
+
+def _build_oof_predictions(estimator, X, y, cv, threshold=0.5, positive_label=1, oversample=False):
+    """Repeated CV evaluator returning pooled OOF predictions and fold-level importances."""
+    y_series = pd.Series(y).reset_index(drop=True)
+    X_df = pd.DataFrame(X).reset_index(drop=True)
+    all_true = []
+    all_pred = []
+    all_score = []
+    fold_importances = []
+    fold_metrics = []
+    fold_sizes = []
+
+    for fold_idx, (train_idx, test_idx) in enumerate(cv.split(X_df, y_series), start=1):
+        X_train = X_df.iloc[train_idx].reset_index(drop=True)
+        y_train = y_series.iloc[train_idx].reset_index(drop=True)
+        X_test = X_df.iloc[test_idx].reset_index(drop=True)
+        y_test = y_series.iloc[test_idx].reset_index(drop=True)
+
+        if oversample:
+            X_train, y_train = _random_oversample(X_train, y_train, random_state=42 + fold_idx)
+
+        model = clone(estimator)
+        model.fit(X_train, y_train)
+
+        if hasattr(model, 'predict_proba'):
+            proba = model.predict_proba(X_test)
+            if proba.ndim == 2 and proba.shape[1] > 1:
+                classes = list(model.classes_)
+                if positive_label in classes:
+                    pos_idx = classes.index(positive_label)
+                else:
+                    pos_idx = 1
+                score = proba[:, pos_idx]
+            else:
+                score = np.asarray(proba).reshape(-1)
+        else:
+            score = None
+
+        if score is None:
+            pred = model.predict(X_test)
+            score = pred.astype(float)
+        else:
+            pred = (score >= threshold).astype(int) if len(np.unique(y_series)) == 2 else model.predict(X_test)
+
+        all_true.extend(y_test.tolist())
+        all_pred.extend(pred.tolist())
+        all_score.extend(score.tolist())
+        fold_sizes.append(len(test_idx))
+
+        if hasattr(model, 'feature_importances_'):
+            fold_importances.append(model.feature_importances_)
+
+        if len(np.unique(y_series)) == 2:
+            fold_metrics.append({
+                'fold': fold_idx,
+                'f1': f1_score(y_test, pred, zero_division=0),
+                'balanced_acc': balanced_accuracy_score(y_test, pred),
+                'accuracy': accuracy_score(y_test, pred),
+            })
+        else:
+            fold_metrics.append({
+                'fold': fold_idx,
+                'macro_f1': f1_score(y_test, pred, average='macro', zero_division=0),
+                'balanced_acc': balanced_accuracy_score(y_test, pred),
+                'accuracy': accuracy_score(y_test, pred),
+            })
+
+    pooled = {
+        'y_true': np.asarray(all_true),
+        'y_pred': np.asarray(all_pred),
+        'y_score': np.asarray(all_score),
+        'fold_metrics': pd.DataFrame(fold_metrics),
+        'fold_importances': fold_importances,
+        'fold_sizes': fold_sizes,
+    }
+    return pooled
+
+
+def _best_threshold_from_pr(y_true, y_score):
+    """Pick the PR threshold that maximizes F1 on pooled out-of-fold predictions."""
+    precision, recall, thresholds = precision_recall_curve(y_true, y_score)
+    if len(thresholds) == 0:
+        return 0.5, {'precision': precision, 'recall': recall, 'thresholds': thresholds}
+    f1_scores = (2 * precision[:-1] * recall[:-1]) / np.maximum(precision[:-1] + recall[:-1], 1e-12)
+    best_idx = int(np.nanargmax(f1_scores))
+    return float(thresholds[best_idx]), {
+        'precision': precision,
+        'recall': recall,
+        'thresholds': thresholds,
+        'f1_scores': f1_scores,
+        'best_idx': best_idx,
+    }
+
+
+def _build_feature_frame(df_in, target_option_num=None):
+    """Create model feature matrix for either multiclass preference or a binary intent target."""
+    numeric_cols = [
+        'Factor_Taste', 'Factor_Brand_Rep', 'Factor_Price', 'Factor_Ingredients', 'Factor_Packaging',
+        'PkgFactor_Taste', 'PkgFactor_Freshness', 'PkgFactor_Nutrition', 'PkgFactor_Safety',
+        'PkgFactor_Convenience', 'PkgFactor_Promotion', 'PkgFactor_Quality', 'PkgFactor_Price',
+        'Age_Ordinal'
+    ]
+    numeric_cols += [c for c in df_in.columns if c.startswith('Gender_') and c not in {'Gender_Label'}]
+    numeric_cols += [c for c in df_in.columns if c.startswith('Marital_') and c not in {'Marital_Label'}]
+    numeric_cols += [c for c in df_in.columns if c in {'Need_Big_Text', 'Need_Interactive', 'Need_Clear_Window', 'Need_Pour_Lid', 'Need_Sodium_Info', 'Design_Special', 'Need_Functional_Pkg'}]
+
+    if target_option_num is None:
+        option_feature_cols = [
+            c for c in df_in.columns
+            if c.startswith('Opt')
+            and c.endswith(('Attractiveness', 'Trust', 'Modernity', 'Premium_Feel'))
+        ]
+    else:
+        option_feature_cols = [
+            f'Opt{target_option_num}_Attractiveness',
+            f'Opt{target_option_num}_Trust',
+            f'Opt{target_option_num}_Modernity',
+            f'Opt{target_option_num}_Premium_Feel',
+        ]
+
+    categorical_cols = [c for c in ['Cat_Breed_Cat', 'Brand_Std'] if c in df_in.columns]
+    numeric_cols = [c for c in numeric_cols + option_feature_cols if c in df_in.columns]
+
+    X_num = df_in[numeric_cols].apply(pd.to_numeric, errors='coerce').fillna(0)
+    if categorical_cols:
+        X_cat = pd.get_dummies(df_in[categorical_cols].fillna('Unknown'), prefix=categorical_cols)
+        X = pd.concat([X_num, X_cat], axis=1)
+        feature_cols = numeric_cols + list(X_cat.columns)
+    else:
+        X = X_num
+        feature_cols = numeric_cols
+    return X, feature_cols
 
 
 # ============================================================
@@ -209,6 +413,8 @@ logging.info(f"After dropping NaN in key columns: {len(df_clean)} rows (from {le
 # 2b. Handle Experience filter (Col 1)
 df_clean = df_clean[df_clean['Experience'] == 'เคย']
 df_clean['Experience'] = 'Yes'
+if len(df_clean) != 148:
+    logging.warning(f"Analytic sample size is {len(df_clean)} rows, expected 148 based on current survey branch.")
 
 # 2c. Standardize Cat Breed (Col 3)
 purebreds = config['purebred_keywords']
@@ -298,6 +504,7 @@ gender_map = {'ชาย': 'Male', 'หญิง': 'Female', 'อื่นๆ': 
 df_clean['Gender_Label'] = df_clean['Gender'].map(gender_map).fillna('Other')
 gender_dummies = pd.get_dummies(df_clean['Gender_Label'], prefix='Gender')
 df_clean = pd.concat([df_clean, gender_dummies], axis=1)
+gender_feature_cols = gender_dummies.columns.tolist()
 
 # 3e. One-Hot Encoding for Marital Status
 marital_map = {
@@ -309,6 +516,7 @@ marital_map = {
 df_clean['Marital_Label'] = df_clean['Marital_Status'].map(marital_map).fillna('Other')
 marital_dummies = pd.get_dummies(df_clean['Marital_Label'], prefix='Marital')
 df_clean = pd.concat([df_clean, marital_dummies], axis=1)
+marital_feature_cols = marital_dummies.columns.tolist()
 logging.info(f"One-Hot encoded Gender & Marital Status")
 
 logging.info(f"[Diagnostic] Encoding completed in {time.time() - t_stage3:.2f}s")
@@ -321,7 +529,7 @@ t_fselect = time.time()
 
 # Prepare feature columns
 feature_cols = likert5_cols + option_cols + ['Age_Ordinal']
-feature_cols += [c for c in df_clean.columns if c.startswith('Gender_') or c.startswith('Marital_')]
+feature_cols += gender_feature_cols + marital_feature_cols
 valid_mask = df_clean['Target_Option'].notna()
 
 def run_anova_feature_selection():
@@ -351,7 +559,7 @@ def run_random_forest_feature_selection():
     """Random Forest feature importance selection"""
     rf_data = df_clean.dropna(subset=['Target_Option']).copy()
     exclude_cols = ['Gender_Label', 'Marital_Label', 'Marital_Status']
-    rf_features = likert5_cols + option_cols + ['Age_Ordinal'] + [c for c in df_clean.columns if (c.startswith('Gender_') or c.startswith('Marital_')) and c not in exclude_cols]
+    rf_features = likert5_cols + option_cols + ['Age_Ordinal'] + gender_feature_cols + marital_feature_cols
     rf_features = [c for c in rf_features if c in rf_data.columns]
 
     X = rf_data[rf_features].fillna(0)
@@ -399,6 +607,281 @@ for col_name, keywords in insights_map.items():
     insight_cols.append(col_name)
 
 logging.info(f"Extracted {len(insight_cols)} insight features from open-ended questions.")
+
+# ============================================================
+# STAGE 3D: PURCHASE INTENT TARGET PREPARATION & SPARSITY REDUCTION
+# ============================================================
+logging.info("\n--- Purchase Intent Target Preparation ---")
+
+purchase_cfg = config.get('purchase_intent', {})
+core_options = purchase_cfg.get('core_options', [3, 6])
+intent_threshold = purchase_cfg.get('threshold', 3)
+min_class_size = purchase_cfg.get('min_class_size_for_grouping', 5)
+
+target_counts = df_clean['Target_Option'].value_counts(dropna=True)
+rare_classes = target_counts[target_counts < min_class_size].index.tolist()
+df_clean['Target_Option_Grouped'] = df_clean['Target_Option'].apply(
+    lambda x: 'Other' if x in rare_classes else x
+)
+logging.info(f"Target_Option_Grouped distribution:\n{df_clean['Target_Option_Grouped'].value_counts().to_string()}")
+
+for opt_num in core_options:
+    pi_col = f'Opt{opt_num}_Purchase_Intent'
+    target_col = f'Opt{opt_num}_High_Intent'
+    if pi_col in df_clean.columns:
+        df_clean[target_col] = (df_clean[pi_col] >= intent_threshold).astype(int)
+        logging.info(f"Created {target_col} using threshold >= {intent_threshold}")
+
+_zero_series = pd.Series(0, index=df_clean.index)
+df_clean['Design_Special'] = (
+    (df_clean.get('Design_Matte', _zero_series) == 1) | (df_clean.get('Design_Cartoon', _zero_series) == 1)
+).astype(int)
+df_clean['Need_Functional_Pkg'] = (
+    (df_clean.get('Need_Small_Packs', _zero_series) == 1) |
+    (df_clean.get('Need_Pour_Lid', _zero_series) == 1) |
+    (df_clean.get('Need_Clear_Window', _zero_series) == 1)
+).astype(int)
+
+final_insight_cols = [
+    c for c in ['Need_Big_Text', 'Need_Interactive', 'Need_Sodium_Info', 'Design_Special', 'Need_Functional_Pkg']
+    if c in df_clean.columns
+]
+
+if 'Need_Topping' in df_clean.columns:
+    df_clean.drop(columns=['Need_Topping'], inplace=True)
+    insight_cols = [c for c in insight_cols if c != 'Need_Topping']
+    logging.info("Dropped sparse feature Need_Topping")
+
+logging.info(f"Final grouped insight columns: {final_insight_cols}")
+
+# ============================================================
+# STAGE 6: PURCHASE INTENT CLASSIFICATION
+# ============================================================
+logging.info("\n" + "=" * 60)
+logging.info("STAGE 6: PURCHASE INTENT CLASSIFICATION")
+logging.info("=" * 60)
+t_model = time.time()
+
+model_results_records = []
+imbalance_records = []
+binary_model_artifacts = {}
+preference_model_artifact = {}
+
+# --- Model 1: Preference (Multiclass) ---
+pref_df = df_clean.dropna(subset=['Target_Option_Grouped']).copy()
+X_pref, pref_feature_cols = _build_feature_frame(pref_df, target_option_num=None)
+y_pref = pref_df['Target_Option_Grouped'].astype(str).reset_index(drop=True)
+
+pref_class_counts = y_pref.value_counts()
+pref_min_class = int(pref_class_counts.min()) if not pref_class_counts.empty else 0
+pref_splits = max(2, min(int(purchase_cfg.get('cv_splits', 5)), pref_min_class if pref_min_class else 2))
+pref_repeats = int(purchase_cfg.get('cv_repeats', 3))
+pref_cv = RepeatedStratifiedKFold(n_splits=pref_splits, n_repeats=pref_repeats, random_state=42)
+
+rf_pref = RandomForestClassifier(
+    n_estimators=200,
+    class_weight='balanced',
+    max_depth=8,
+    min_samples_leaf=5,
+    random_state=42,
+)
+
+pref_eval = _build_oof_predictions(rf_pref, X_pref, y_pref, pref_cv, threshold=0.5, oversample=False)
+pref_report = _safe_classification_report(pref_eval['y_true'], pref_eval['y_pred'])
+pref_macro_f1 = f1_score(pref_eval['y_true'], pref_eval['y_pred'], average='macro', zero_division=0)
+pref_bal_acc = balanced_accuracy_score(pref_eval['y_true'], pref_eval['y_pred'])
+pref_acc = accuracy_score(pref_eval['y_true'], pref_eval['y_pred'])
+
+pref_final_model = clone(rf_pref)
+pref_final_model.fit(X_pref, y_pref)
+
+preference_model_artifact = {
+    'features': pref_feature_cols,
+    'model': pref_final_model,
+    'cv': pref_cv,
+    'eval': pref_eval,
+    'report': pref_report,
+    'metrics': {
+        'macro_f1': pref_macro_f1,
+        'balanced_accuracy': pref_bal_acc,
+        'accuracy': pref_acc,
+    },
+}
+
+model_results_records.extend(
+    _flatten_classification_report(pref_report, 'Preference', 'RandomForest', 'RepeatedCV', threshold=None)
+)
+model_results_records.append({
+    'Target': 'Preference',
+    'Model': 'RandomForest',
+    'Step': 'RepeatedCV_Summary',
+    'Label': '__summary__',
+    'Threshold': None,
+    'Precision': None,
+    'Recall': pref_bal_acc,
+    'F1': pref_macro_f1,
+    'Support': int(len(y_pref)),
+})
+
+# --- Model 2: Purchase Intent (Binary) ---
+for opt_num in core_options:
+    target_col = f'Opt{opt_num}_High_Intent'
+    if target_col not in df_clean.columns:
+        logging.warning(f"Skipping {target_col}: column not found")
+        continue
+
+    intent_df = df_clean.dropna(subset=[target_col]).copy()
+    X_intent, intent_feature_cols = _build_feature_frame(intent_df, target_option_num=opt_num)
+    y_intent = intent_df[target_col].astype(int).reset_index(drop=True)
+
+    intent_counts = y_intent.value_counts()
+    intent_min_class = int(intent_counts.min()) if not intent_counts.empty else 0
+    intent_splits = max(2, min(int(purchase_cfg.get('cv_splits', 5)), intent_min_class if intent_min_class else 2))
+    intent_repeats = int(purchase_cfg.get('cv_repeats', 3))
+    intent_cv = RepeatedStratifiedKFold(n_splits=intent_splits, n_repeats=intent_repeats, random_state=42)
+
+    baseline_estimator = RandomForestClassifier(
+        n_estimators=200,
+        class_weight=None,
+        max_depth=6,
+        min_samples_leaf=5,
+        random_state=42,
+    )
+    balanced_estimator = RandomForestClassifier(
+        n_estimators=200,
+        class_weight='balanced',
+        max_depth=6,
+        min_samples_leaf=5,
+        random_state=42,
+    )
+
+    baseline_eval = _build_oof_predictions(baseline_estimator, X_intent, y_intent, intent_cv, threshold=0.5, positive_label=1, oversample=False)
+    balanced_eval = _build_oof_predictions(balanced_estimator, X_intent, y_intent, intent_cv, threshold=0.5, positive_label=1, oversample=False)
+    tuned_threshold, pr_data = _best_threshold_from_pr(balanced_eval['y_true'], balanced_eval['y_score'])
+    tuned_pred = (balanced_eval['y_score'] >= tuned_threshold).astype(int)
+    tuned_report = _safe_classification_report(balanced_eval['y_true'], tuned_pred, labels=[0, 1], target_names=['Low', 'High'])
+
+    oversample_eval = _build_oof_predictions(baseline_estimator, X_intent, y_intent, intent_cv, threshold=0.5, positive_label=1, oversample=True)
+    oversample_report = _safe_classification_report(oversample_eval['y_true'], oversample_eval['y_pred'], labels=[0, 1], target_names=['Low', 'High'])
+
+    final_model = clone(balanced_estimator)
+    final_model.fit(X_intent, y_intent)
+
+    average_precision = average_precision_score(balanced_eval['y_true'], balanced_eval['y_score'])
+    best_f1 = f1_score(balanced_eval['y_true'], tuned_pred, zero_division=0)
+    best_bal_acc = balanced_accuracy_score(balanced_eval['y_true'], tuned_pred)
+    best_acc = accuracy_score(balanced_eval['y_true'], tuned_pred)
+
+    binary_model_artifacts[opt_num] = {
+        'target_col': target_col,
+        'feature_cols': intent_feature_cols,
+        'model': final_model,
+        'cv': intent_cv,
+        'baseline_eval': baseline_eval,
+        'balanced_eval': balanced_eval,
+        'oversample_eval': oversample_eval,
+        'threshold': tuned_threshold,
+        'pr_data': pr_data,
+        'average_precision': average_precision,
+        'feature_importances': pd.Series(final_model.feature_importances_, index=intent_feature_cols).sort_values(ascending=False),
+        'reports': {
+            'baseline': _safe_classification_report(baseline_eval['y_true'], baseline_eval['y_pred'], labels=[0, 1], target_names=['Low', 'High']),
+            'balanced': _safe_classification_report(balanced_eval['y_true'], balanced_eval['y_pred'], labels=[0, 1], target_names=['Low', 'High']),
+            'tuned': tuned_report,
+            'oversample': oversample_report,
+        },
+        'metrics': {
+            'baseline': {
+                'f1': f1_score(baseline_eval['y_true'], baseline_eval['y_pred'], zero_division=0),
+                'balanced_acc': balanced_accuracy_score(baseline_eval['y_true'], baseline_eval['y_pred']),
+                'pr_auc': average_precision_score(baseline_eval['y_true'], baseline_eval['y_score']),
+                'accuracy': accuracy_score(baseline_eval['y_true'], baseline_eval['y_pred']),
+            },
+            'balanced': {
+                'f1': f1_score(balanced_eval['y_true'], balanced_eval['y_pred'], zero_division=0),
+                'balanced_acc': balanced_accuracy_score(balanced_eval['y_true'], balanced_eval['y_pred']),
+                'pr_auc': average_precision_score(balanced_eval['y_true'], balanced_eval['y_score']),
+                'accuracy': accuracy_score(balanced_eval['y_true'], balanced_eval['y_pred']),
+            },
+            'tuned': {
+                'f1': best_f1,
+                'balanced_acc': best_bal_acc,
+                'pr_auc': average_precision,
+                'accuracy': best_acc,
+            },
+            'oversample': {
+                'f1': f1_score(oversample_eval['y_true'], oversample_eval['y_pred'], zero_division=0),
+                'balanced_acc': balanced_accuracy_score(oversample_eval['y_true'], oversample_eval['y_pred']),
+                'pr_auc': average_precision_score(oversample_eval['y_true'], oversample_eval['y_score']),
+                'accuracy': accuracy_score(oversample_eval['y_true'], oversample_eval['y_pred']),
+            },
+        }
+    }
+
+    # Model results export rows
+    for step_name, report in binary_model_artifacts[opt_num]['reports'].items():
+        model_results_records.extend(
+            _flatten_classification_report(report, f'Opt{opt_num}_High_Intent', 'RandomForest', step_name, threshold=tuned_threshold if step_name == 'tuned' else (0.5 if step_name != 'oversample' else 0.5))
+        )
+
+    model_results_records.append({
+        'Target': f'Opt{opt_num}_High_Intent',
+        'Model': 'RandomForest',
+        'Step': 'Summary',
+        'Label': '__summary__',
+        'Threshold': tuned_threshold,
+        'Precision': None,
+        'Recall': best_bal_acc,
+        'F1': best_f1,
+        'Support': int(len(y_intent)),
+    })
+
+    imbalance_records.extend([
+        {
+            'Target': f'Opt{opt_num}_High_Intent',
+            'Step': '1_Baseline',
+            'F1': binary_model_artifacts[opt_num]['metrics']['baseline']['f1'],
+            'Balanced_Accuracy': binary_model_artifacts[opt_num]['metrics']['baseline']['balanced_acc'],
+            'PR_AUC': binary_model_artifacts[opt_num]['metrics']['baseline']['pr_auc'],
+            'Threshold': 0.5,
+        },
+        {
+            'Target': f'Opt{opt_num}_High_Intent',
+            'Step': '2_Class_Weight',
+            'F1': binary_model_artifacts[opt_num]['metrics']['balanced']['f1'],
+            'Balanced_Accuracy': binary_model_artifacts[opt_num]['metrics']['balanced']['balanced_acc'],
+            'PR_AUC': binary_model_artifacts[opt_num]['metrics']['balanced']['pr_auc'],
+            'Threshold': 0.5,
+        },
+        {
+            'Target': f'Opt{opt_num}_High_Intent',
+            'Step': '3_Threshold_Tuned',
+            'F1': binary_model_artifacts[opt_num]['metrics']['tuned']['f1'],
+            'Balanced_Accuracy': binary_model_artifacts[opt_num]['metrics']['tuned']['balanced_acc'],
+            'PR_AUC': binary_model_artifacts[opt_num]['metrics']['tuned']['pr_auc'],
+            'Threshold': tuned_threshold,
+        },
+        {
+            'Target': f'Opt{opt_num}_High_Intent',
+            'Step': '4_Oversample',
+            'F1': binary_model_artifacts[opt_num]['metrics']['oversample']['f1'],
+            'Balanced_Accuracy': binary_model_artifacts[opt_num]['metrics']['oversample']['balanced_acc'],
+            'PR_AUC': binary_model_artifacts[opt_num]['metrics']['oversample']['pr_auc'],
+            'Threshold': 0.5,
+        },
+    ])
+
+    logging.info(
+        f"[Opt{opt_num}] baseline F1={binary_model_artifacts[opt_num]['metrics']['baseline']['f1']:.3f}, "
+        f"balanced F1={binary_model_artifacts[opt_num]['metrics']['balanced']['f1']:.3f}, "
+        f"tuned F1={best_f1:.3f} @ threshold={tuned_threshold:.3f}, "
+        f"oversample F1={binary_model_artifacts[opt_num]['metrics']['oversample']['f1']:.3f}"
+    )
+
+model_results_df = pd.DataFrame(model_results_records)
+imbalance_comparison_df = pd.DataFrame(imbalance_records)
+
+logging.info(f"[Diagnostic] Purchase intent models completed in {time.time() - t_model:.2f}s")
 
 # ============================================================
 # STAGE 4: DATA VISUALIZATION (PARALLEL)
@@ -542,6 +1025,113 @@ def generate_chart_rf_importance():
         fig.clf()
         logging.info("Chart 7 saved: chart7_rf_feature_importance.png")
 
+def generate_chart_purchase_intent_distribution():
+    """Chart 8: Purchase intent score distribution for Opt3 vs Opt6"""
+    available_opts = [opt for opt in core_options if f'Opt{opt}_Purchase_Intent' in df_clean.columns]
+    if len(available_opts) < 2:
+        return
+
+    fig = Figure(figsize=(12, 6))
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+
+    score_levels = [1, 2, 3, 4]
+    plot_df = pd.DataFrame(index=score_levels)
+    for opt in available_opts:
+        col = f'Opt{opt}_Purchase_Intent'
+        counts = df_clean[col].value_counts().reindex(score_levels, fill_value=0)
+        plot_df[f'Opt{opt}'] = counts
+
+    plot_df.plot(kind='bar', ax=ax, color=[COLORS[0], COLORS[2]])
+    ax.set_title('Purchase Intent Distribution: Opt3 vs Opt6', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Purchase Intent Score')
+    ax.set_ylabel('Count')
+    ax.set_xticklabels([str(i) for i in score_levels], rotation=0)
+    ax.legend(title='Option')
+    fig.tight_layout()
+    canvas.print_figure('chart8_purchase_intent_dist.png', dpi=150, bbox_inches='tight')
+    fig.clf()
+    logging.info("Chart 8 saved: chart8_purchase_intent_dist.png")
+
+def generate_chart_pr_curve():
+    """Chart 9: Precision-Recall curve for the core intent model"""
+    core_target = core_options[0] if core_options else None
+    if core_target not in binary_model_artifacts:
+        return
+
+    artifact = binary_model_artifacts[core_target]
+    y_true = artifact['balanced_eval']['y_true']
+    y_score = artifact['balanced_eval']['y_score']
+    precision, recall, _ = precision_recall_curve(y_true, y_score)
+    ap = artifact['average_precision']
+
+    fig = Figure(figsize=(8, 6))
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    ax.plot(recall, precision, color=COLORS[0], linewidth=2)
+    ax.set_title(f'Precision-Recall Curve for Opt{core_target}_High_Intent (AP={ap:.3f})', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.grid(alpha=0.3)
+    ax.axhline(y=y_true.mean(), color='gray', linestyle='--', linewidth=1, label='Baseline')
+    ax.legend()
+    fig.tight_layout()
+    canvas.print_figure('chart9_pr_auc_curve.png', dpi=150, bbox_inches='tight')
+    fig.clf()
+    logging.info("Chart 9 saved: chart9_pr_auc_curve.png")
+
+def generate_chart_intent_feature_importance():
+    """Chart 10: Feature importance for the core intent model"""
+    core_target = core_options[0] if core_options else None
+    if core_target not in binary_model_artifacts:
+        return
+
+    importance_series = binary_model_artifacts[core_target]['feature_importances'].head(10)
+    if importance_series.empty:
+        return
+
+    fig = Figure(figsize=(10, 6))
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    plot_df = importance_series.reset_index()
+    plot_df.columns = ['Feature', 'Importance']
+    sns.barplot(data=plot_df, x='Importance', y='Feature', palette='viridis', ax=ax)
+    ax.set_title(f'Top Feature Importance for Opt{core_target}_High_Intent', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Importance')
+    ax.set_ylabel('Feature')
+    fig.tight_layout()
+    canvas.print_figure('chart10_intent_feature_importance.png', dpi=150, bbox_inches='tight')
+    fig.clf()
+    logging.info("Chart 10 saved: chart10_intent_feature_importance.png")
+
+def generate_chart_imbalance_comparison():
+    """Chart 11: Imbalance ladder comparison for the core intent model"""
+    core_target = core_options[0] if core_options else None
+    if core_target is None:
+        return
+    target_name = f'Opt{core_target}_High_Intent'
+    plot_df = imbalance_comparison_df[imbalance_comparison_df['Target'] == target_name].copy()
+    if plot_df.empty:
+        return
+
+    fig = Figure(figsize=(12, 6))
+    canvas = FigureCanvasAgg(fig)
+    ax = fig.subplots()
+    plot_long = plot_df.melt(id_vars=['Step'], value_vars=['F1', 'Balanced_Accuracy', 'PR_AUC'], var_name='Metric', value_name='Score')
+    step_order = ['1_Baseline', '2_Class_Weight', '3_Threshold_Tuned', '4_Oversample']
+    sns.barplot(data=plot_long, x='Step', y='Score', hue='Metric', order=step_order, ax=ax)
+    ax.set_title(f'Imbalance Ladder Comparison for Opt{core_target}_High_Intent', fontsize=14, fontweight='bold')
+    ax.set_xlabel('Step')
+    ax.set_ylabel('Score')
+    ax.set_ylim(0, 1)
+    ax.tick_params(axis='x', rotation=25)
+    fig.tight_layout()
+    canvas.print_figure('chart11_imbalance_comparison.png', dpi=150, bbox_inches='tight')
+    fig.clf()
+    logging.info("Chart 11 saved: chart11_imbalance_comparison.png")
+
 # Define chart generation functions
 chart_generators = [
     generate_chart_demographics,
@@ -551,10 +1141,14 @@ chart_generators = [
     generate_chart_insights,
     generate_chart_insights_vs_option,
     generate_chart_rf_importance,
+    generate_chart_purchase_intent_distribution,
+    generate_chart_pr_curve,
+    generate_chart_intent_feature_importance,
+    generate_chart_imbalance_comparison,
 ]
 
 # Run all charts in parallel
-with ThreadPoolExecutor(max_workers=7) as executor:
+with ThreadPoolExecutor(max_workers=len(chart_generators)) as executor:
     futures = [executor.submit(gen) for gen in chart_generators]
     for f in as_completed(futures):
         try:
@@ -565,21 +1159,23 @@ with ThreadPoolExecutor(max_workers=7) as executor:
 logging.info(f"[Diagnostic] All charts generated in parallel in {time.time() - t_viz:.2f}s")
 
 # ============================================================
-# STAGE 5: EXPORT & SUMMARY
+# STAGE 5: EXPORT
 # ============================================================
 logging.info("\n" + "=" * 60)
-logging.info("STAGE 5: EXPORT & SUMMARY")
+logging.info("STAGE 5: EXPORT")
 logging.info("=" * 60)
 t_export = time.time()
 
 # 5a. Export CSV
 try:
     export_cols = (
-        ['Target_Option', 'Experience', 'Cat_Breed_Cat', 'Brand_Std']
+        ['Target_Option', 'Target_Option_Grouped', 'Experience', 'Cat_Breed_Cat', 'Brand_Std']
         + likert5_cols + option_cols
+        + [f'Opt{opt}_High_Intent' for opt in core_options if f'Opt{opt}_High_Intent' in df_clean.columns]
         + ['Age_Ordinal', 'Gender_Label', 'Marital_Label']
-        + [c for c in df_clean.columns if c.startswith('Gender_') or c.startswith('Marital_')]
+        + gender_feature_cols + marital_feature_cols
         + insight_cols
+        + final_insight_cols
     )
     export_cols = [c for c in export_cols if c in df_clean.columns]
     df_export = df_clean[export_cols].copy()
@@ -588,28 +1184,16 @@ try:
 except Exception as e:
     logging.error(f"Failed to export CSV: {e}")
 
-# 5b. Summary Text
 try:
-    summary_text = f"""=== Logic for Target & Feature Selection ===
-1. Target Variable: Extract 'Top 3 Choices', take 1st choice.
-2. Data Cleaning:
-   - Dropped missing rows & 'No Cat Experience' respondents.
-   - Standardized breeds and brands from config.
-3. Feature Encoding: Ordinal & One-Hot Encoding.
-4. Feature Selection: ANOVA test + RandomForest (parallel execution).
-5. Text Mining: Boolean features extracted from config insights.
-
-=== Execution Summary ===
-- Data Profiling: Parallel (4 profilers)
-- Feature Selection: Parallel (ANOVA + RandomForest)
-- Chart Generation: Parallel (7 charts)
-- Total charts generated: 7
-"""
-    with open('presentation_summary.txt', 'w', encoding='utf-8') as f:
-        f.write(summary_text)
-    logging.info("Exported: presentation_summary.txt")
+    if 'model_results_df' in globals() and not model_results_df.empty:
+        model_results_df.to_csv('model_results.csv', index=False, encoding='utf-8-sig')
+        logging.info(f"Exported: model_results.csv ({model_results_df.shape})")
 except Exception as e:
-    logging.error(f"Failed to export summary text: {e}")
+    logging.error(f"Failed to export model_results.csv: {e}")
 
-logging.info(f"[Diagnostic] Export completed in {time.time() - t_export:.2f}s")
-logging.info("\n[OK] Pipeline completed successfully!")
+try:
+    if 'imbalance_comparison_df' in globals() and not imbalance_comparison_df.empty:
+        imbalance_comparison_df.to_csv('imbalance_comparison.csv', index=False, encoding='utf-8-sig')
+        logging.info(f"Exported: imbalance_comparison.csv ({imbalance_comparison_df.shape})")
+except Exception as e:
+    logging.error(f"Failed to export imbalance_comparison.csv: {e}")
